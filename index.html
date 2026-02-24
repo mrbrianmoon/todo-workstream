@@ -76,6 +76,36 @@
   .date-badge:hover { background: #444a50; }
   .date-badge svg { opacity: 0.7; }
 
+  .day-nav-pill {
+    display: inline-flex;
+    align-items: stretch;
+    background: #2e3236;
+    border-radius: 99px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .day-nav-btn {
+    background: transparent;
+    color: #e8e4dc;
+    border: none;
+    width: 26px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    line-height: 1;
+    padding: 5px 0;
+  }
+  .day-nav-btn:hover { background: #444a50; }
+  .day-nav-btn:active { background: #1a1e21; }
+  .day-nav-divider {
+    width: 1px;
+    background: #4a5058;
+    margin: 4px 0;
+  }
+
   .cal-popover {
     display: none;
     position: absolute;
@@ -287,20 +317,27 @@
   <div class="header-left">
     <h1>To Do</h1>
     <p>Track outstanding tasks and action items</p>
-    <div style="position:relative; display:inline-block;">
-      <button class="date-badge" id="dateBadge" onclick="toggleCal()">
-        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <rect x="1" y="2" width="12" height="11" rx="2"/><path d="M1 6h12M5 1v2M9 1v2"/>
-        </svg>
-        <span id="dateBadgeText"></span>
-      </button>
-      <div class="cal-popover" id="calPopover">
-        <div class="cal-header">
-          <button class="cal-nav" onclick="changeMonth(-1)">&#8249;</button>
-          <span id="calMonthLabel"></span>
-          <button class="cal-nav" onclick="changeMonth(1)">&#8250;</button>
+    <div style="display:inline-flex; align-items:flex-end; gap:8px; position:relative;">
+      <div style="position:relative;">
+        <button class="date-badge" id="dateBadge" onclick="toggleCal()">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="1" y="2" width="12" height="11" rx="2"/><path d="M1 6h12M5 1v2M9 1v2"/>
+          </svg>
+          <span id="dateBadgeText"></span>
+        </button>
+        <div class="cal-popover" id="calPopover">
+          <div class="cal-header">
+            <button class="cal-nav" onclick="changeMonth(-1)">&#8249;</button>
+            <span id="calMonthLabel"></span>
+            <button class="cal-nav" onclick="changeMonth(1)">&#8250;</button>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
         </div>
-        <div class="cal-grid" id="calGrid"></div>
+      </div>
+      <div class="day-nav-pill">
+        <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
+        <div class="day-nav-divider"></div>
+        <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
       </div>
     </div>
   </div>
@@ -405,6 +442,12 @@
   }
 
   function pickDate(y, m, d) { selectedDate = new Date(y, m, d); updateBadge(); document.getElementById('calPopover').classList.remove('open'); loadTasks(); }
+
+  function shiftDay(dir) {
+    selectedDate.setDate(selectedDate.getDate() + dir);
+    updateBadge();
+    loadTasks();
+  }
 
   document.addEventListener('click', function(e) {
     const pop = document.getElementById('calPopover');
