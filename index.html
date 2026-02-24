@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -559,8 +560,14 @@
   // ── Load from Supabase ────────────────────────────────────────
   async function loadTasks() {
     setSyncStatus('syncing', '⟳ Loading...');
-    const { data, error } = await db.from('tasks').select('*').order('position');
-    if (error) { setSyncStatus('error', '✕ Could not load'); console.error(error); return; }
+    const { data, error } = await db.from('tasks').select('*').order('position', { ascending: true });
+    if (error) {
+      setSyncStatus('error', '✕ Could not load: ' + error.message);
+      console.error('Load error:', error);
+      hideLoader();
+      return;
+    }
+    console.log('Loaded tasks:', data);
     renderAllTasks(data || []);
     setSyncStatus('synced', '✓ Synced');
     setTimeout(() => setSyncStatus('', ''), 2000);
@@ -574,11 +581,11 @@
   }
 
   // ── Real-time subscription ────────────────────────────────────
-  db.channel('tasks-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
-      loadTasks();
-    })
-    .subscribe();
+  db.channel('tasks-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, () => loadTasks())
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, () => loadTasks())
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, () => loadTasks())
+    .subscribe((status) => { console.log('Realtime status:', status); });
 
   // ── CRUD ──────────────────────────────────────────────────────
   async function addTask() {
@@ -595,10 +602,15 @@
       fwd_count: 0, done: false, position
     }]);
 
-    if (error) { setSyncStatus('error', '✕ Save failed'); console.error(error); return; }
+    if (error) {
+      setSyncStatus('error', '✕ Save failed: ' + error.message);
+      console.error('Insert error:', error);
+      return;
+    }
     setSyncStatus('synced', '✓ Saved');
     setTimeout(() => setSyncStatus('', ''), 2000);
     closeModal();
+    await loadTasks();
   }
 
   async function toggleTask(el) {
