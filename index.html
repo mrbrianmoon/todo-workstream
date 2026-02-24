@@ -404,7 +404,7 @@
     for (let d = 1; d <= remaining; d++) { const el = document.createElement('div'); el.className = 'cal-day other-month'; el.textContent = d; grid.appendChild(el); }
   }
 
-  function pickDate(y, m, d) { selectedDate = new Date(y, m, d); updateBadge(); document.getElementById('calPopover').classList.remove('open'); }
+  function pickDate(y, m, d) { selectedDate = new Date(y, m, d); updateBadge(); document.getElementById('calPopover').classList.remove('open'); loadTasks(); }
 
   document.addEventListener('click', function(e) {
     const pop = document.getElementById('calPopover');
@@ -511,6 +511,7 @@
     task.dataset.id = row.id;
     task.dataset.fwdCount = row.fwd_count || 0;
     task.dataset.originDate = row.origin_date || '';
+    task.dataset.displayDate = row.display_date || row.origin_date || '';
 
     const fwdCount = row.fwd_count || 0;
     const fwdBadge = fwdCount > 0 ? `<span class="forwarded-badge">↪ Forwarded x${fwdCount}</span>` : '';
@@ -541,9 +542,16 @@
   function renderAllTasks(rows) {
     const list = document.getElementById('taskList');
     list.innerHTML = '';
+    const currentDateStr = formatShortDate(selectedDate);
     const sorted = [...rows].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    // Filter: show task if its display_date matches selected date
+    // display_date is set on forward; otherwise falls back to origin_date
+    const visible = sorted.filter(row => {
+      const taskDate = row.display_date || row.origin_date;
+      return taskDate === currentDateStr;
+    });
     const categories = {};
-    sorted.forEach(row => {
+    visible.forEach(row => {
       const cat = row.category || 'General';
       if (!categories[cat]) categories[cat] = [];
       categories[cat].push(row);
@@ -599,7 +607,7 @@
     setSyncStatus('syncing', '⟳ Saving...');
     const { error } = await db.from('tasks').insert([{
       name, note, category, origin_date: origin,
-      fwd_count: 0, done: false, position
+      display_date: origin, fwd_count: 0, done: false, position
     }]);
 
     if (error) {
@@ -625,19 +633,30 @@
     const id = task.dataset.id;
     const count = (parseInt(task.dataset.fwdCount) || 0) + 1;
     task.dataset.fwdCount = count;
-    const titleEl = task.querySelector('.task-title');
-    const oldBadge = titleEl.querySelector('.forwarded-badge');
-    if (oldBadge) oldBadge.remove();
-    const badge = document.createElement('span');
-    badge.className = 'forwarded-badge';
-    badge.textContent = `↪ Forwarded x${count}`;
-    titleEl.appendChild(badge);
 
-    const next = new Date(selectedDate);
+    // Compute next day from the task's current display_date (or origin_date)
+    const currentDisplayDate = task.dataset.displayDate || task.dataset.originDate;
+    const parts = currentDisplayDate.match(/(\w+)\s+(\d+),\s+(\d+)/);
+    let baseDate;
+    if (parts) {
+      baseDate = new Date(`${parts[1]} ${parts[2]}, ${parts[3]}`);
+    } else {
+      baseDate = new Date(selectedDate);
+    }
+    const next = new Date(baseDate);
     next.setDate(next.getDate() + 1);
+    const nextStr = formatShortDate(next);
+    task.dataset.displayDate = nextStr;
+
     showToast(`Forwarded to ${DAYS_FULL[next.getDay()]}, ${MONTH_SHORT[next.getMonth()]} ${next.getDate()}`);
 
-    await db.from('tasks').update({ fwd_count: count }).eq('id', id);
+    // Remove task from current view immediately
+    task.style.transition = 'opacity 0.3s, transform 0.3s';
+    task.style.opacity = '0';
+    task.style.transform = 'translateX(10px)';
+    setTimeout(() => { task.remove(); cleanEmptySections(); updateProgress(); checkEmpty(); }, 300);
+
+    await db.from('tasks').update({ fwd_count: count, display_date: nextStr }).eq('id', id);
   }
 
   async function deleteTask(el) {
