@@ -467,7 +467,7 @@
   // ── Drag & Drop ───────────────────────────────────────────────
   let dragEl = null, ghost = null, offsetX = 0, offsetY = 0, currentIndicator = null;
   let holdTimer = null, pendingEl = null, holdReady = false;
-  const HOLD_DELAY = 750; // ms before drag activates
+  const HOLD_DELAY = 500; // ms before drag activates
 
   function initDrag(task) {
     task.addEventListener('mousedown', onMouseDown);
