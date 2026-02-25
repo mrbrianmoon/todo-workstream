@@ -466,6 +466,8 @@
 
   // ── Drag & Drop ───────────────────────────────────────────────
   let dragEl = null, ghost = null, offsetX = 0, offsetY = 0, currentIndicator = null;
+  let holdTimer = null, pendingEl = null, holdReady = false;
+  const HOLD_DELAY = 750; // ms before drag activates
 
   function initDrag(task) {
     task.addEventListener('mousedown', onMouseDown);
@@ -474,12 +476,66 @@
 
   function onMouseDown(e) {
     if (e.target.closest('.checkbox') || e.target.closest('.delete-btn') || e.target.closest('.forward-btn')) return;
-    e.preventDefault(); startDrag(e.currentTarget, e.clientX, e.clientY);
+    e.preventDefault();
+    beginHold(e.currentTarget, e.clientX, e.clientY, false);
   }
 
   function onTouchStart(e) {
     if (e.target.closest('.checkbox') || e.target.closest('.delete-btn') || e.target.closest('.forward-btn')) return;
-    e.preventDefault(); const t = e.touches[0]; startDrag(e.currentTarget, t.clientX, t.clientY);
+    // Don't preventDefault yet — allow scroll until hold completes
+    const t = e.touches[0];
+    beginHold(e.currentTarget, t.clientX, t.clientY, true);
+  }
+
+  function beginHold(el, clientX, clientY, isTouch) {
+    cancelHold();
+    pendingEl = el;
+    const startX = clientX, startY = clientY;
+    // Visual hint: slight scale after a brief moment
+    holdTimer = setTimeout(() => {
+      holdReady = true;
+      el.style.transition = 'transform 0.15s, box-shadow 0.15s';
+      el.style.transform = 'scale(1.02)';
+      el.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
+      // Now actually start the drag
+      startDrag(el, clientX, clientY);
+    }, HOLD_DELAY);
+
+    // If finger/mouse moves too far before hold completes, cancel (allow scroll)
+    const moveThreshold = 10;
+    function earlyMove(ev) {
+      const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+      const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      if (Math.abs(cx - startX) > moveThreshold || Math.abs(cy - startY) > moveThreshold) {
+        cancelHold();
+        cleanup();
+      }
+    }
+    function earlyEnd() { cancelHold(); cleanup(); }
+    function cleanup() {
+      document.removeEventListener('mousemove', earlyMove);
+      document.removeEventListener('mouseup', earlyEnd);
+      document.removeEventListener('touchmove', earlyMove);
+      document.removeEventListener('touchend', earlyEnd);
+    }
+    // These listeners only live until hold completes or is cancelled
+    document.addEventListener('mousemove', earlyMove);
+    document.addEventListener('mouseup', earlyEnd);
+    document.addEventListener('touchmove', earlyMove, { passive: true });
+    document.addEventListener('touchend', earlyEnd);
+
+    // Store cleanup so cancelHold can remove them
+    pendingEl._holdCleanup = cleanup;
+  }
+
+  function cancelHold() {
+    clearTimeout(holdTimer); holdTimer = null; holdReady = false;
+    if (pendingEl) {
+      pendingEl.style.transition = 'transform 0.15s, box-shadow 0.15s';
+      pendingEl.style.transform = ''; pendingEl.style.boxShadow = '';
+      if (pendingEl._holdCleanup) { pendingEl._holdCleanup(); delete pendingEl._holdCleanup; }
+      pendingEl = null;
+    }
   }
 
   function startDrag(el, clientX, clientY) {
@@ -490,6 +546,8 @@
     ghost.innerHTML = el.innerHTML; ghost.style.width = rect.width + 'px';
     document.body.appendChild(ghost); positionGhost(clientX, clientY);
     dragEl.classList.add('dragging');
+    // Reset the hold visual hint
+    el.style.transform = ''; el.style.boxShadow = '';
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
     document.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -528,22 +586,43 @@
   async function drop() {
     document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp);
     document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd);
+    cancelHold();
     if (!dragEl) return;
     const list = document.getElementById('taskList');
     if (currentIndicator) list.insertBefore(dragEl, currentIndicator);
     clearIndicator(); dragEl.classList.remove('dragging');
-    ghost.remove(); ghost = null;
+    if (ghost) { ghost.remove(); ghost = null; }
     const moved = dragEl; dragEl = null;
     cleanEmptySections(); updateProgress(); checkEmpty();
-    // Save new positions
+    // Save new positions and detect category changes
     await savePositions();
   }
 
   async function savePositions() {
-    const tasks = [...document.querySelectorAll('.task')];
-    const updates = tasks.map((t, i) => ({ id: t.dataset.id, position: i }));
-    for (const u of updates) {
-      if (u.id) await db.from('tasks').update({ position: u.position }).eq('id', u.id);
+    const list = document.getElementById('taskList');
+    const children = [...list.children];
+    let currentCategory = 'General';
+    const updates = [];
+    let pos = 0;
+    children.forEach(child => {
+      if (child.classList.contains('section-label')) {
+        currentCategory = child.textContent;
+      } else if (child.classList.contains('task') && child.dataset.id) {
+        updates.push({ id: child.dataset.id, position: pos, category: currentCategory });
+        pos++;
+      }
+    });
+    // Batch all updates — use Promise.all so they fire together
+    setSyncStatus('syncing', '⟳ Saving order...');
+    try {
+      await Promise.all(updates.map(u =>
+        db.from('tasks').update({ position: u.position, category: u.category }).eq('id', u.id)
+      ));
+      setSyncStatus('synced', '✓ Synced');
+      setTimeout(() => setSyncStatus('', ''), 2000);
+    } catch (err) {
+      setSyncStatus('error', '✕ Sync failed');
+      console.error('Position save error:', err);
     }
   }
 
