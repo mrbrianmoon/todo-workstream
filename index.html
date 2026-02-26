@@ -655,41 +655,22 @@
     return task;
   }
 
-  // ── Smart diff-based rendering (no flicker) ───────────────────
-  // Generates a fingerprint string for a row so we can compare state
-  function rowFingerprint(row) {
-    return `${row.id}|${row.done}|${row.position}|${row.category}|${row.fwd_count}|${row.display_date}|${row.name}|${row.note}`;
-  }
-
-  // Store last rendered state to diff against
-  let lastRenderedFingerprint = '';
-  let lastRenderedData = null;
-
-  function renderAllTasks(rows, forceRebuild) {
+  function renderAllTasks(rows) {
     const list = document.getElementById('taskList');
+    list.innerHTML = '';
     const currentDateStr = formatShortDate(selectedDate);
     const sorted = [...rows].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
     const visible = sorted.filter(row => {
       const taskDate = row.display_date || row.origin_date;
       return taskDate === currentDateStr;
     });
+    // Split into active and completed
+    const active = visible.filter(row => !row.done);
+    const completed = visible.filter(row => row.done);
 
-    // Build a fingerprint of the full visible state
-    const fingerprint = visible.map(rowFingerprint).join('~~');
-
-    // If nothing changed, skip the rebuild entirely
-    if (!forceRebuild && fingerprint === lastRenderedFingerprint) {
-      return;
-    }
-
-    const isFirstLoad = lastRenderedData === null;
-    const activeTasks = visible.filter(row => !row.done);
-    const completedTasks = visible.filter(row => row.done);
-
-    // Rebuild the list
-    list.innerHTML = '';
+    // Render active tasks grouped by category
     const categories = {};
-    activeTasks.forEach(row => {
+    active.forEach(row => {
       const cat = row.category || 'General';
       if (!categories[cat]) categories[cat] = [];
       categories[cat].push(row);
@@ -698,37 +679,23 @@
       const label = document.createElement('div');
       label.className = 'section-label'; label.textContent = cat;
       list.appendChild(label);
-      items.forEach(row => {
-        const el = createTaskEl(row);
-        // Only animate on first load or forced rebuilds (local actions), not remote syncs
-        if (!isFirstLoad && !forceRebuild) el.style.animation = 'none';
-        list.appendChild(el);
-      });
+      items.forEach(row => list.appendChild(createTaskEl(row)));
     });
-    if (completedTasks.length > 0) {
+
+    // Render completed section at the bottom
+    if (completed.length > 0) {
       const divider = document.createElement('div');
       divider.className = 'section-label completed-label';
       divider.textContent = 'Completed';
       list.appendChild(divider);
-      completedTasks.forEach(row => {
-        const el = createTaskEl(row);
-        if (!isFirstLoad && !forceRebuild) el.style.animation = 'none';
-        list.appendChild(el);
-      });
+      completed.forEach(row => list.appendChild(createTaskEl(row)));
     }
 
-    lastRenderedFingerprint = fingerprint;
-    lastRenderedData = visible;
     updateProgress(); checkEmpty();
   }
 
   // ── Load from Supabase ────────────────────────────────────────
-  // Cooldown: ignore realtime events for 500ms after a local action
-  let localActionUntil = 0;
-  function markLocalAction() { localActionUntil = Date.now() + 500; }
-  function isLocalCooldown() { return Date.now() < localActionUntil; }
-
-  async function loadTasks(forceRebuild) {
+  async function loadTasks() {
     setSyncStatus('syncing', '⟳ Loading...');
     const { data, error } = await db.from('tasks').select('*').order('position', { ascending: true });
     if (error) {
@@ -737,7 +704,8 @@
       hideLoader();
       return;
     }
-    renderAllTasks(data || [], forceRebuild);
+    console.log('Loaded tasks:', data);
+    renderAllTasks(data || []);
     setSyncStatus('synced', '✓ Synced');
     setTimeout(() => setSyncStatus('', ''), 2000);
     hideLoader();
@@ -750,19 +718,10 @@
   }
 
   // ── Real-time subscription ────────────────────────────────────
-  // Debounce realtime events to avoid rapid-fire reloads
-  let realtimeTimer = null;
-  function onRealtimeChange() {
-    // Skip if we're in the middle of a local action (we'll reload ourselves)
-    if (isLocalCooldown()) return;
-    clearTimeout(realtimeTimer);
-    realtimeTimer = setTimeout(() => loadTasks(false), 150);
-  }
-
   db.channel('tasks-realtime')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, onRealtimeChange)
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, onRealtimeChange)
-    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, onRealtimeChange)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, () => loadTasks())
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, () => loadTasks())
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, () => loadTasks())
     .subscribe((status) => { console.log('Realtime status:', status); });
 
   // ── CRUD ──────────────────────────────────────────────────────
@@ -774,7 +733,6 @@
     const origin = formatShortDate(selectedDate);
     const position = document.querySelectorAll('.task').length;
 
-    markLocalAction();
     setSyncStatus('syncing', '⟳ Saving...');
     const { error } = await db.from('tasks').insert([{
       name, note, category, origin_date: origin,
@@ -789,27 +747,23 @@
     setSyncStatus('synced', '✓ Saved');
     setTimeout(() => setSyncStatus('', ''), 2000);
     closeModal();
-    await loadTasks(true);
+    await loadTasks();
   }
 
   async function toggleTask(el) {
     const id = el.dataset.id;
     const done = !el.classList.contains('done');
-    markLocalAction();
     el.style.transition = 'opacity 0.3s, transform 0.3s';
     el.style.opacity = '0';
     el.style.transform = done ? 'translateY(8px)' : 'translateY(-8px)';
     await db.from('tasks').update({ done }).eq('id', id);
-    setTimeout(async () => {
-      await loadTasks(true);
-    }, 300);
+    setTimeout(() => loadTasks(), 300);
   }
 
   async function forwardTask(task) {
     const id = task.dataset.id;
     const count = (parseInt(task.dataset.fwdCount) || 0) + 1;
     task.dataset.fwdCount = count;
-    markLocalAction();
 
     const currentDisplayDate = task.dataset.displayDate || task.dataset.originDate;
     const parts = currentDisplayDate.match(/(\w+)\s+(\d+),\s+(\d+)/);
@@ -836,7 +790,6 @@
 
   async function deleteTask(el) {
     const id = el.dataset.id;
-    markLocalAction();
     el.style.transition = 'opacity 0.2s, transform 0.2s';
     el.style.opacity = '0'; el.style.transform = 'translateX(10px)';
     setTimeout(async () => {
@@ -895,7 +848,7 @@
   }
 
   // ── Init ──────────────────────────────────────────────────────
-  loadTasks(true);
+  loadTasks();
 </script>
 </body>
 </html>
