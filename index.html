@@ -682,103 +682,39 @@
       return;
     }
 
-    // Check if we can do a minimal update (same tasks, just property changes)
-    const existingEls = {};
-    list.querySelectorAll('.task[data-id]').forEach(el => { existingEls[el.dataset.id] = el; });
-
+    const isFirstLoad = lastRenderedData === null;
     const activeTasks = visible.filter(row => !row.done);
     const completedTasks = visible.filter(row => row.done);
 
-    // If the set of visible task IDs or their order/sections changed, do a full rebuild
-    // Otherwise try to update in-place
-    const oldIds = Object.keys(existingEls).sort().join(',');
-    const newIds = visible.map(r => r.id).sort().join(',');
-    const needsFullRebuild = forceRebuild || oldIds !== newIds || lastRenderedData === null;
-
-    if (needsFullRebuild) {
-      // Full rebuild (first load, tasks added/removed/reordered)
-      list.innerHTML = '';
-      const categories = {};
-      activeTasks.forEach(row => {
-        const cat = row.category || 'General';
-        if (!categories[cat]) categories[cat] = [];
-        categories[cat].push(row);
+    // Rebuild the list
+    list.innerHTML = '';
+    const categories = {};
+    activeTasks.forEach(row => {
+      const cat = row.category || 'General';
+      if (!categories[cat]) categories[cat] = [];
+      categories[cat].push(row);
+    });
+    Object.entries(categories).forEach(([cat, items]) => {
+      const label = document.createElement('div');
+      label.className = 'section-label'; label.textContent = cat;
+      list.appendChild(label);
+      items.forEach(row => {
+        const el = createTaskEl(row);
+        // Only animate on first load or forced rebuilds (local actions), not remote syncs
+        if (!isFirstLoad && !forceRebuild) el.style.animation = 'none';
+        list.appendChild(el);
       });
-      Object.entries(categories).forEach(([cat, items]) => {
-        const label = document.createElement('div');
-        label.className = 'section-label'; label.textContent = cat;
-        list.appendChild(label);
-        items.forEach(row => list.appendChild(createTaskEl(row)));
+    });
+    if (completedTasks.length > 0) {
+      const divider = document.createElement('div');
+      divider.className = 'section-label completed-label';
+      divider.textContent = 'Completed';
+      list.appendChild(divider);
+      completedTasks.forEach(row => {
+        const el = createTaskEl(row);
+        if (!isFirstLoad && !forceRebuild) el.style.animation = 'none';
+        list.appendChild(el);
       });
-      if (completedTasks.length > 0) {
-        const divider = document.createElement('div');
-        divider.className = 'section-label completed-label';
-        divider.textContent = 'Completed';
-        list.appendChild(divider);
-        completedTasks.forEach(row => list.appendChild(createTaskEl(row)));
-      }
-    } else {
-      // Minimal in-place update — same tasks, just properties changed
-      // Update each existing DOM element to match new data
-      const rowMap = {};
-      visible.forEach(r => { rowMap[r.id] = r; });
-
-      // Check if done status or position changed — if so, rebuild structure
-      let structureChanged = false;
-      for (const row of visible) {
-        const el = existingEls[row.id];
-        if (!el) { structureChanged = true; break; }
-        const wasDone = el.classList.contains('done');
-        if (wasDone !== row.done) { structureChanged = true; break; }
-      }
-
-      if (structureChanged) {
-        // Structure changed (done toggled, position changed) — rebuild but without animation flicker
-        // Temporarily disable animations
-        list.style.animation = 'none';
-        list.innerHTML = '';
-        const categories = {};
-        activeTasks.forEach(row => {
-          const cat = row.category || 'General';
-          if (!categories[cat]) categories[cat] = [];
-          categories[cat].push(row);
-        });
-        Object.entries(categories).forEach(([cat, items]) => {
-          const label = document.createElement('div');
-          label.className = 'section-label'; label.textContent = cat;
-          list.appendChild(label);
-          items.forEach(row => {
-            const el = createTaskEl(row);
-            el.style.animation = 'none'; // prevent fadeUp flicker on remote updates
-            list.appendChild(el);
-          });
-        });
-        if (completedTasks.length > 0) {
-          const divider = document.createElement('div');
-          divider.className = 'section-label completed-label';
-          divider.textContent = 'Completed';
-          list.appendChild(divider);
-          completedTasks.forEach(row => {
-            const el = createTaskEl(row);
-            el.style.animation = 'none';
-            list.appendChild(el);
-          });
-        }
-      } else {
-        // Only minor property changes (fwd_count, note, etc) — update text in place
-        for (const row of visible) {
-          const el = existingEls[row.id];
-          if (!el) continue;
-          const fwdCount = row.fwd_count || 0;
-          const fwdBadge = fwdCount > 0 ? `<span class="forwarded-badge">↪ Forwarded x${fwdCount}</span>` : '';
-          const titleEl = el.querySelector('.task-title');
-          if (titleEl) titleEl.innerHTML = `${escapeHtml(row.name)}${fwdBadge}`;
-          const subEl = el.querySelector('.task-sub');
-          if (subEl) subEl.innerHTML = `${escapeHtml(row.note || '')} · <span class="origin-date">Added ${escapeHtml(row.origin_date || '')}</span>`;
-          el.dataset.fwdCount = fwdCount;
-          el.dataset.displayDate = row.display_date || row.origin_date || '';
-        }
-      }
     }
 
     lastRenderedFingerprint = fingerprint;
