@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -786,7 +787,10 @@
   }
 
   // ── Load from Supabase ────────────────────────────────────────
-  let isLocalAction = false; // flag to skip realtime reload during local actions
+  // Cooldown: ignore realtime events for 500ms after a local action
+  let localActionUntil = 0;
+  function markLocalAction() { localActionUntil = Date.now() + 500; }
+  function isLocalCooldown() { return Date.now() < localActionUntil; }
 
   async function loadTasks(forceRebuild) {
     setSyncStatus('syncing', '⟳ Loading...');
@@ -814,7 +818,7 @@
   let realtimeTimer = null;
   function onRealtimeChange() {
     // Skip if we're in the middle of a local action (we'll reload ourselves)
-    if (isLocalAction) return;
+    if (isLocalCooldown()) return;
     clearTimeout(realtimeTimer);
     realtimeTimer = setTimeout(() => loadTasks(false), 150);
   }
@@ -834,7 +838,7 @@
     const origin = formatShortDate(selectedDate);
     const position = document.querySelectorAll('.task').length;
 
-    isLocalAction = true;
+    markLocalAction();
     setSyncStatus('syncing', '⟳ Saving...');
     const { error } = await db.from('tasks').insert([{
       name, note, category, origin_date: origin,
@@ -844,27 +848,24 @@
     if (error) {
       setSyncStatus('error', '✕ Save failed: ' + error.message);
       console.error('Insert error:', error);
-      isLocalAction = false;
       return;
     }
     setSyncStatus('synced', '✓ Saved');
     setTimeout(() => setSyncStatus('', ''), 2000);
     closeModal();
     await loadTasks(true);
-    isLocalAction = false;
   }
 
   async function toggleTask(el) {
     const id = el.dataset.id;
     const done = !el.classList.contains('done');
-    isLocalAction = true;
+    markLocalAction();
     el.style.transition = 'opacity 0.3s, transform 0.3s';
     el.style.opacity = '0';
     el.style.transform = done ? 'translateY(8px)' : 'translateY(-8px)';
     await db.from('tasks').update({ done }).eq('id', id);
     setTimeout(async () => {
       await loadTasks(true);
-      isLocalAction = false;
     }, 300);
   }
 
@@ -872,7 +873,7 @@
     const id = task.dataset.id;
     const count = (parseInt(task.dataset.fwdCount) || 0) + 1;
     task.dataset.fwdCount = count;
-    isLocalAction = true;
+    markLocalAction();
 
     const currentDisplayDate = task.dataset.displayDate || task.dataset.originDate;
     const parts = currentDisplayDate.match(/(\w+)\s+(\d+),\s+(\d+)/);
@@ -895,18 +896,16 @@
     setTimeout(() => { task.remove(); cleanEmptySections(); updateProgress(); checkEmpty(); }, 300);
 
     await db.from('tasks').update({ fwd_count: count, display_date: nextStr }).eq('id', id);
-    setTimeout(() => { isLocalAction = false; }, 500);
   }
 
   async function deleteTask(el) {
     const id = el.dataset.id;
-    isLocalAction = true;
+    markLocalAction();
     el.style.transition = 'opacity 0.2s, transform 0.2s';
     el.style.opacity = '0'; el.style.transform = 'translateX(10px)';
     setTimeout(async () => {
       el.remove(); cleanEmptySections(); updateProgress(); checkEmpty();
       if (id) await db.from('tasks').delete().eq('id', id);
-      setTimeout(() => { isLocalAction = false; }, 300);
     }, 200);
   }
 
