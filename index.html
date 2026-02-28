@@ -88,6 +88,29 @@
     overflow: hidden;
     margin-top: 12px;
     margin-left: 15px;
+}
+  
+.move-monday-btn {
+    display: inline-flex;
+    align-items: center;
+    background: #2e3236;
+    color: #e8e4dc;
+    border: none;
+    border-radius: 99px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    margin-top: 12px;
+    margin-left: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .move-monday-btn:hover { background: #444a50; }
+  .move-monday-btn:active { background: #1a1e21; }
+  
   }
   .day-nav-btn {
     background: transparent;
@@ -343,10 +366,12 @@
           <div class="cal-grid" id="calGrid"></div>
         </div>
       </div>
-      <div class="day-nav-pill">
+     <div class="day-nav-pill">
         <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
         <div class="day-nav-divider"></div>
         <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
+      </div>
+      <button class="move-monday-btn" onclick="moveToMonday()">Move to Monday</button>
       </div>
     </div>
   </div>
@@ -792,7 +817,43 @@
 
     await db.from('tasks').update({ fwd_count: count, display_date: nextStr }).eq('id', id);
   }
+async function moveToMonday() {
+    const tasks = document.querySelectorAll('.task:not(.done)');
+    if (tasks.length === 0) { showToast('No uncompleted tasks to move'); return; }
 
+    // Calculate next Monday
+    const today = new Date(selectedDate);
+    const dayOfWeek = today.getDay();
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
+    const nextMonday = new Date(today);
+    nextMonday.setDate(today.getDate() + daysUntilMonday);
+    const mondayStr = formatShortDate(nextMonday);
+
+    const ids = [];
+    tasks.forEach(task => {
+      const id = task.dataset.id;
+      const count = (parseInt(task.dataset.fwdCount) || 0) + 1;
+      ids.push({ id, fwd_count: count });
+      task.style.transition = 'opacity 0.3s, transform 0.3s';
+      task.style.opacity = '0';
+      task.style.transform = 'translateX(10px)';
+    });
+
+    showToast(`Moving ${ids.length} task${ids.length > 1 ? 's' : ''} to Monday, ${mondayStr}`);
+
+    setSyncStatus('syncing', '⟳ Moving tasks...');
+    try {
+      await Promise.all(ids.map(u =>
+        db.from('tasks').update({ display_date: mondayStr, fwd_count: u.fwd_count }).eq('id', u.id)
+      ));
+      setSyncStatus('synced', '✓ Synced');
+      setTimeout(() => setSyncStatus('', ''), 2000);
+      setTimeout(() => loadTasks(), 350);
+    } catch (err) {
+      setSyncStatus('error', '✕ Move failed');
+      console.error('Move to Monday error:', err);
+    }
+  }
   async function deleteTask(el) {
     const id = el.dataset.id;
     el.style.transition = 'opacity 0.2s, transform 0.2s';
