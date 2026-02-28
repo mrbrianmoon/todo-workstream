@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>  
@@ -35,14 +34,8 @@
   header {
     max-width: 640px;
     margin: 0 auto 36px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
+    position: relative;
   }
-
-  .header-left { flex: 1; }
 
   header h1 {
     font-family: 'DM Serif Display', serif;
@@ -59,7 +52,7 @@
     font-weight: 300;
   }
 
-.date-badge {
+  .date-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -82,39 +75,22 @@
   .date-badge:hover { background: #444a50; }
   .date-badge svg { opacity: 0.7; }
 
-.day-nav-pill {
+  .nav-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    margin-top: 0;
+    position: relative;
+  }
+
+  .day-nav-pill {
     display: inline-flex;
     align-items: stretch;
     background: #2e3236;
     border-radius: 99px;
     overflow: hidden;
     margin-top: 12px;
-    margin-left: 15px;
     flex-shrink: 0;
-}
-  
-.move-monday-btn {
-    display: inline-flex;
-    align-items: center;
-    background: #2e3236;
-    color: #e8e4dc;
-    border: none;
-    border-radius: 99px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 5px 14px;
-    margin-top: 12px;
-    margin-left: 8px;
-    cursor: pointer;
-    transition: background 0.2s;
-    flex-shrink: 0;
-  }
-  .move-monday-btn:hover { background: #444a50; }
-  .move-monday-btn:active { background: #1a1e21; }
-  
   }
   .day-nav-btn {
     background: transparent;
@@ -137,6 +113,27 @@
     background: #4a5058;
     margin: 4px 0;
   }
+
+  .move-monday-btn {
+    display: inline-flex;
+    align-items: center;
+    background: #2e3236;
+    color: #e8e4dc;
+    border: none;
+    border-radius: 99px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    margin-top: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .move-monday-btn:hover { background: #444a50; }
+  .move-monday-btn:active { background: #1a1e21; }
 
   .cal-popover {
     display: none;
@@ -182,12 +179,14 @@
   .cal-day.selected:hover { background: #444a50; }
 
   .add-btn {
-    margin-top: 6px; flex-shrink: 0; width: 42px; height: 42px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 42px; height: 42px;
     border-radius: 50%; background: #111111; color: white; border: none;
     font-size: 1.5rem; cursor: pointer; display: flex; align-items: center;
     justify-content: center; transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
     box-shadow: 0 2px 8px rgba(0,0,0,0.3); line-height: 1;
-    margin-left: auto;
   }
   .add-btn:hover { background: #333333; transform: scale(1.08); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
 
@@ -351,38 +350,35 @@
 <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
 
 <header>
-  <div class="header-left">
-    <h1>To Do v2.0</h1>
-    <p>Track outstanding tasks and action items.</p>
-     <div style="display:flex; align-items:flex-end; gap:8px; position:relative; flex-wrap:wrap;">
-      <div style="position:relative;">
-        <button class="date-badge" id="dateBadge" onclick="toggleCal()">
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <rect x="1" y="2" width="12" height="11" rx="2"/><path d="M1 6h12M5 1v2M9 1v2"/>
-          </svg>
-          <span id="dateBadgeText"></span>
-        </button>
-        <div class="cal-popover" id="calPopover">
-          <div class="cal-header">
-            <button class="cal-nav" onclick="changeMonth(-1)">&#8249;</button>
-            <span id="calMonthLabel"></span>
-            <button class="cal-nav" onclick="changeMonth(1)">&#8250;</button>
-          </div>
-          <div class="cal-grid" id="calGrid"></div>
+  <button class="add-btn" onclick="openModal()" title="Add item">+</button>
+  <h1>To Do v2.0</h1>
+  <p>Track outstanding tasks and action items.</p>
+  <div class="nav-row">
+    <div style="position:relative;">
+      <button class="date-badge" id="dateBadge" onclick="toggleCal()">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <rect x="1" y="2" width="12" height="11" rx="2"/><path d="M1 6h12M5 1v2M9 1v2"/>
+        </svg>
+        <span id="dateBadgeText"></span>
+      </button>
+      <div class="cal-popover" id="calPopover">
+        <div class="cal-header">
+          <button class="cal-nav" onclick="changeMonth(-1)">&#8249;</button>
+          <span id="calMonthLabel"></span>
+          <button class="cal-nav" onclick="changeMonth(1)">&#8250;</button>
         </div>
-      </div>
-     <div class="day-nav-pill">
-        <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
-        <div class="day-nav-divider"></div>
-        <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
-      </div>
-      <button class="move-monday-btn" onclick="moveToMonday()">Move to Monday</button>
+        <div class="cal-grid" id="calGrid"></div>
       </div>
     </div>
+    <div class="day-nav-pill">
+      <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
+      <div class="day-nav-divider"></div>
+      <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
+    </div>
+    <button class="move-monday-btn" onclick="moveToMonday()">Move to Monday</button>
   </div>
-
 </header>
-<button class="add-btn" onclick="openModal()" title="Add item">+</button>
+
 <div class="progress-bar-wrap"><div class="progress-bar-fill" id="bar"></div></div>
 <div class="progress-label" id="progressLabel">0 of 0 complete</div>
 <div class="sync-status" id="syncStatus"></div>
@@ -699,11 +695,9 @@
       const taskDate = row.display_date || row.origin_date;
       return taskDate === currentDateStr;
     });
-    // Split into active and completed
     const active = visible.filter(row => !row.done);
     const completed = visible.filter(row => row.done);
 
-    // Render active tasks grouped by category
     const categories = {};
     active.forEach(row => {
       const cat = row.category || 'General';
@@ -717,7 +711,6 @@
       items.forEach(row => list.appendChild(createTaskEl(row)));
     });
 
-    // Render completed section at the bottom
     if (completed.length > 0) {
       const divider = document.createElement('div');
       divider.className = 'section-label completed-label';
@@ -822,11 +815,11 @@
 
     await db.from('tasks').update({ fwd_count: count, display_date: nextStr }).eq('id', id);
   }
-async function moveToMonday() {
+
+  async function moveToMonday() {
     const tasks = document.querySelectorAll('.task:not(.done)');
     if (tasks.length === 0) { showToast('No uncompleted tasks to move'); return; }
 
-    // Calculate next Monday
     const today = new Date(selectedDate);
     const dayOfWeek = today.getDay();
     const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
@@ -859,6 +852,7 @@ async function moveToMonday() {
       console.error('Move to Monday error:', err);
     }
   }
+
   async function deleteTask(el) {
     const id = el.dataset.id;
     el.style.transition = 'opacity 0.2s, transform 0.2s';
