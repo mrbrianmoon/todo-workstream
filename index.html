@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>  
-<link rel="icon" href="favicon.ico" type="image/x-icon">
-<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>To Do</title>
@@ -18,6 +16,15 @@
     --accent2: #3a6b4a;
     --border: #9fa5ab;
     --done-bg: #c2ccc5;
+    --high-bg: #e8bab0;
+    --high-border: #d4917f;
+    --high-label: #b5432a;
+    --med-bg: #e8ddb0;
+    --med-border: #d4c97f;
+    --med-label: #8a7a1e;
+    --low-bg: #b0cce8;
+    --low-border: #7fa8d4;
+    --low-label: #2a5e8a;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -34,8 +41,13 @@
   header {
     max-width: 640px;
     margin: 0 auto 36px;
-    position: relative;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
   }
+
+  .header-left { flex: 1; }
 
   header h1 {
     font-family: 'DM Serif Display', serif;
@@ -55,7 +67,6 @@
   .date-badge {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
     gap: 6px;
     margin-top: 12px;
     background: #2e3236;
@@ -69,19 +80,9 @@
     cursor: pointer;
     border: none;
     transition: background 0.2s;
-    min-width: 235px;
-    flex-shrink: 0;
   }
   .date-badge:hover { background: #444a50; }
   .date-badge svg { opacity: 0.7; }
-
-  .nav-row {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    margin-top: 0;
-    position: relative;
-  }
 
   .day-nav-pill {
     display: inline-flex;
@@ -90,7 +91,6 @@
     border-radius: 99px;
     overflow: hidden;
     margin-top: 12px;
-    flex-shrink: 0;
   }
   .day-nav-btn {
     background: transparent;
@@ -113,27 +113,6 @@
     background: #4a5058;
     margin: 4px 0;
   }
-
-  .move-monday-btn {
-    display: inline-flex;
-    align-items: center;
-    background: #2e3236;
-    color: #e8e4dc;
-    border: none;
-    border-radius: 99px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 5px 14px;
-    margin-top: 12px;
-    cursor: pointer;
-    transition: background 0.2s;
-    flex-shrink: 0;
-  }
-  .move-monday-btn:hover { background: #444a50; }
-  .move-monday-btn:active { background: #1a1e21; }
 
   .cal-popover {
     display: none;
@@ -179,10 +158,7 @@
   .cal-day.selected:hover { background: #444a50; }
 
   .add-btn {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 42px; height: 42px;
+    margin-top: 6px; flex-shrink: 0; width: 42px; height: 42px;
     border-radius: 50%; background: #111111; color: white; border: none;
     font-size: 1.5rem; cursor: pointer; display: flex; align-items: center;
     justify-content: center; transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
@@ -218,10 +194,6 @@
     font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
     letter-spacing: 0.12em; color: var(--muted); margin: 18px 0 4px 4px;
   }
-  .completed-label {
-    margin-top: 28px; padding-top: 14px;
-    border-top: 1px solid var(--border);
-  }
 
   .task {
     background: var(--card); border: 1.5px solid var(--border); border-radius: 12px;
@@ -236,6 +208,31 @@
   .task.done { background: var(--done-bg); border-color: #bcd5c6; }
   .task.done .task-title { text-decoration: line-through; color: var(--muted); }
   .task.done .task-sub { color: #b0c4b8; }
+
+  .task.priority-high { background: var(--high-bg); border-color: var(--high-border); }
+  .task.priority-high.done { background: #d9c5c0; border-color: #c4aea6; }
+  .task.priority-med { background: var(--med-bg); border-color: var(--med-border); }
+  .task.priority-med.done { background: #d9d5c0; border-color: #c4bfa6; }
+  .task.priority-low { background: var(--low-bg); border-color: var(--low-border); }
+  .task.priority-low.done { background: #c0cbd9; border-color: #a6b4c4; }
+
+  .priority-badge {
+    display: inline-block; font-size: 0.6rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 1px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle;
+  }
+  .priority-badge.high { background: var(--high-label); color: #fff; }
+  .priority-badge.med { background: var(--med-label); color: #fff; }
+  .priority-badge.low { background: var(--low-label); color: #fff; }
+
+  .section-label.priority-section {
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+    padding: 4px 10px; border-radius: 6px; margin-top: 6px; margin-bottom: 4px;
+    display: inline-block;
+  }
+  .section-label.priority-high-label { background: var(--high-bg); color: var(--high-label); border: 1px solid var(--high-border); }
+  .section-label.priority-med-label { background: var(--med-bg); color: var(--med-label); border: 1px solid var(--med-border); }
+  .section-label.priority-low-label { background: var(--low-bg); color: var(--low-label); border: 1px solid var(--low-border); }
   .task.dragging { opacity: 0.3; cursor: grabbing; }
 
   .forwarded-badge {
@@ -269,7 +266,7 @@
 
   .task-body { flex: 1; }
   .task-title { font-size: 1rem; font-weight: 500; transition: color 0.2s; }
-  .task-sub { font-size: 0.8rem; color: var(--ink); margin-top: 3px; font-weight: 300; transition: color 0.2s; }
+  .task-sub { font-size: 0.8rem; color: var(--muted); margin-top: 3px; font-weight: 300; transition: color 0.2s; }
 
   .task-actions { display: flex; align-items: flex-start; gap: 2px; flex-shrink: 0; margin-top: 1px; }
 
@@ -350,33 +347,34 @@
 <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
 
 <header>
-  <button class="add-btn" onclick="openModal()" title="Add item">+</button>
-  <h1>To Do v2.0</h1>
-  <p>Track outstanding tasks and action items.</p>
-  <div class="nav-row">
-    <div style="position:relative;">
-      <button class="date-badge" id="dateBadge" onclick="toggleCal()">
-        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <rect x="1" y="2" width="12" height="11" rx="2"/><path d="M1 6h12M5 1v2M9 1v2"/>
-        </svg>
-        <span id="dateBadgeText"></span>
-      </button>
-      <div class="cal-popover" id="calPopover">
-        <div class="cal-header">
-          <button class="cal-nav" onclick="changeMonth(-1)">&#8249;</button>
-          <span id="calMonthLabel"></span>
-          <button class="cal-nav" onclick="changeMonth(1)">&#8250;</button>
+  <div class="header-left">
+    <h1>To Do</h1>
+    <p>Track outstanding tasks and action items</p>
+    <div style="display:inline-flex; align-items:flex-end; gap:8px; position:relative;">
+      <div style="position:relative;">
+        <button class="date-badge" id="dateBadge" onclick="toggleCal()">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <rect x="1" y="2" width="12" height="11" rx="2"/><path d="M1 6h12M5 1v2M9 1v2"/>
+          </svg>
+          <span id="dateBadgeText"></span>
+        </button>
+        <div class="cal-popover" id="calPopover">
+          <div class="cal-header">
+            <button class="cal-nav" onclick="changeMonth(-1)">&#8249;</button>
+            <span id="calMonthLabel"></span>
+            <button class="cal-nav" onclick="changeMonth(1)">&#8250;</button>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
         </div>
-        <div class="cal-grid" id="calGrid"></div>
+      </div>
+      <div class="day-nav-pill">
+        <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
+        <div class="day-nav-divider"></div>
+        <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
       </div>
     </div>
-    <div class="day-nav-pill">
-      <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
-      <div class="day-nav-divider"></div>
-      <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
-    </div>
-    <button class="move-monday-btn" onclick="moveToMonday()">Move to Monday</button>
   </div>
+  <button class="add-btn" onclick="openModal()" title="Add item">+</button>
 </header>
 
 <div class="progress-bar-wrap"><div class="progress-bar-fill" id="bar"></div></div>
@@ -398,10 +396,18 @@
     <label>Note (optional)</label>
     <input type="text" id="taskNote" placeholder="e.g. Contact via phone call" />
     <label>Category</label>
-    <select id="taskCategory">
+    <select id="taskCategory" onchange="togglePrioritySelect()">
       <option value="Students">Students</option>
       <option value="Action Items">Action Items</option>
     </select>
+    <div id="priorityGroup" style="display:none;">
+      <label>Priority</label>
+      <select id="taskPriority">
+        <option value="HIGH">🔴 High</option>
+        <option value="MED">🟡 Medium</option>
+        <option value="LOW">🔵 Low</option>
+      </select>
+    </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
       <button class="btn-add" onclick="addTask()">Add Item</button>
@@ -422,6 +428,11 @@
     const el = document.getElementById('syncStatus');
     el.className = 'sync-status ' + state;
     el.textContent = msg;
+  }
+
+  function togglePrioritySelect() {
+    const cat = document.getElementById('taskCategory').value;
+    document.getElementById('priorityGroup').style.display = cat === 'Action Items' ? 'block' : 'none';
   }
 
   // ── Date ──────────────────────────────────────────────────────
@@ -501,8 +512,6 @@
 
   // ── Drag & Drop ───────────────────────────────────────────────
   let dragEl = null, ghost = null, offsetX = 0, offsetY = 0, currentIndicator = null;
-  let holdTimer = null, pendingEl = null, holdReady = false;
-  const HOLD_DELAY = 500;
 
   function initDrag(task) {
     task.addEventListener('mousedown', onMouseDown);
@@ -511,59 +520,12 @@
 
   function onMouseDown(e) {
     if (e.target.closest('.checkbox') || e.target.closest('.delete-btn') || e.target.closest('.forward-btn')) return;
-    e.preventDefault();
-    beginHold(e.currentTarget, e.clientX, e.clientY, false);
+    e.preventDefault(); startDrag(e.currentTarget, e.clientX, e.clientY);
   }
 
   function onTouchStart(e) {
     if (e.target.closest('.checkbox') || e.target.closest('.delete-btn') || e.target.closest('.forward-btn')) return;
-    const t = e.touches[0];
-    beginHold(e.currentTarget, t.clientX, t.clientY, true);
-  }
-
-  function beginHold(el, clientX, clientY, isTouch) {
-    cancelHold();
-    pendingEl = el;
-    const startX = clientX, startY = clientY;
-    holdTimer = setTimeout(() => {
-      holdReady = true;
-      el.style.transition = 'transform 0.15s, box-shadow 0.15s';
-      el.style.transform = 'scale(1.02)';
-      el.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
-      startDrag(el, clientX, clientY);
-    }, HOLD_DELAY);
-
-    const moveThreshold = 10;
-    function earlyMove(ev) {
-      const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
-      const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
-      if (Math.abs(cx - startX) > moveThreshold || Math.abs(cy - startY) > moveThreshold) {
-        cancelHold();
-        cleanup();
-      }
-    }
-    function earlyEnd() { cancelHold(); cleanup(); }
-    function cleanup() {
-      document.removeEventListener('mousemove', earlyMove);
-      document.removeEventListener('mouseup', earlyEnd);
-      document.removeEventListener('touchmove', earlyMove);
-      document.removeEventListener('touchend', earlyEnd);
-    }
-    document.addEventListener('mousemove', earlyMove);
-    document.addEventListener('mouseup', earlyEnd);
-    document.addEventListener('touchmove', earlyMove, { passive: true });
-    document.addEventListener('touchend', earlyEnd);
-    pendingEl._holdCleanup = cleanup;
-  }
-
-  function cancelHold() {
-    clearTimeout(holdTimer); holdTimer = null; holdReady = false;
-    if (pendingEl) {
-      pendingEl.style.transition = 'transform 0.15s, box-shadow 0.15s';
-      pendingEl.style.transform = ''; pendingEl.style.boxShadow = '';
-      if (pendingEl._holdCleanup) { pendingEl._holdCleanup(); delete pendingEl._holdCleanup; }
-      pendingEl = null;
-    }
+    e.preventDefault(); const t = e.touches[0]; startDrag(e.currentTarget, t.clientX, t.clientY);
   }
 
   function startDrag(el, clientX, clientY) {
@@ -574,7 +536,6 @@
     ghost.innerHTML = el.innerHTML; ghost.style.width = rect.width + 'px';
     document.body.appendChild(ghost); positionGhost(clientX, clientY);
     dragEl.classList.add('dragging');
-    el.style.transform = ''; el.style.boxShadow = '';
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
     document.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -613,14 +574,14 @@
   async function drop() {
     document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp);
     document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd);
-    cancelHold();
     if (!dragEl) return;
     const list = document.getElementById('taskList');
     if (currentIndicator) list.insertBefore(dragEl, currentIndicator);
     clearIndicator(); dragEl.classList.remove('dragging');
-    if (ghost) { ghost.remove(); ghost = null; }
+    ghost.remove(); ghost = null;
     const moved = dragEl; dragEl = null;
     cleanEmptySections(); updateProgress(); checkEmpty();
+    // Save new positions
     await savePositions();
   }
 
@@ -628,20 +589,51 @@
     const list = document.getElementById('taskList');
     const children = [...list.children];
     let currentCategory = 'General';
+    let currentPriority = null;
     const updates = [];
     let pos = 0;
     children.forEach(child => {
       if (child.classList.contains('section-label')) {
-        currentCategory = child.textContent;
+        if (child.dataset.priorityZone) {
+          currentPriority = child.dataset.priorityZone;
+          currentCategory = 'Action Items';
+        } else if (child.classList.contains('completed-label')) {
+          // don't change category for completed section
+        } else {
+          currentCategory = child.dataset.sectionCategory || child.textContent;
+          currentPriority = (currentCategory === 'Action Items') ? currentPriority : null;
+        }
       } else if (child.classList.contains('task') && child.dataset.id) {
-        updates.push({ id: child.dataset.id, position: pos, category: currentCategory });
+        const taskCat = currentCategory;
+        const taskPri = (taskCat === 'Action Items') ? currentPriority : null;
+        updates.push({ id: child.dataset.id, position: pos, category: taskCat, priority: taskPri });
+
+        // Live-update styling
+        child.classList.remove('priority-high', 'priority-med', 'priority-low');
+        child.dataset.priority = taskPri || '';
+        child.dataset.category = taskCat;
+        if (taskCat === 'Action Items' && taskPri) {
+          child.classList.add('priority-' + taskPri.toLowerCase());
+          const oldBadge = child.querySelector('.priority-badge');
+          if (oldBadge) oldBadge.remove();
+          const titleEl = child.querySelector('.task-title');
+          if (titleEl) {
+            const badge = document.createElement('span');
+            badge.className = 'priority-badge ' + taskPri.toLowerCase();
+            badge.textContent = taskPri;
+            titleEl.appendChild(badge);
+          }
+        } else {
+          const oldBadge = child.querySelector('.priority-badge');
+          if (oldBadge) oldBadge.remove();
+        }
         pos++;
       }
     });
     setSyncStatus('syncing', '⟳ Saving order...');
     try {
       await Promise.all(updates.map(u =>
-        db.from('tasks').update({ position: u.position, category: u.category }).eq('id', u.id)
+        db.from('tasks').update({ position: u.position, category: u.category, priority: u.priority }).eq('id', u.id)
       ));
       setSyncStatus('synced', '✓ Synced');
       setTimeout(() => setSyncStatus('', ''), 2000);
@@ -654,14 +646,29 @@
   // ── Render task from DB row ───────────────────────────────────
   function createTaskEl(row) {
     const task = document.createElement('div');
-    task.className = 'task' + (row.done ? ' done' : '');
+    const priority = row.priority || '';
+    let priorityClass = '';
+    if (priority === 'HIGH') priorityClass = ' priority-high';
+    else if (priority === 'MED') priorityClass = ' priority-med';
+    else if (priority === 'LOW') priorityClass = ' priority-low';
+
+    task.className = 'task' + (row.done ? ' done' : '') + priorityClass;
     task.dataset.id = row.id;
     task.dataset.fwdCount = row.fwd_count || 0;
     task.dataset.originDate = row.origin_date || '';
     task.dataset.displayDate = row.display_date || row.origin_date || '';
+    task.dataset.priority = priority;
+    task.dataset.category = row.category || '';
 
     const fwdCount = row.fwd_count || 0;
     const fwdBadge = fwdCount > 0 ? `<span class="forwarded-badge">↪ Forwarded x${fwdCount}</span>` : '';
+
+    let priBadge = '';
+    if (priority && row.category === 'Action Items') {
+      const priLabel = priority === 'HIGH' ? 'HIGH' : priority === 'MED' ? 'MED' : 'LOW';
+      const priClass = priority.toLowerCase();
+      priBadge = `<span class="priority-badge ${priClass}">${priLabel}</span>`;
+    }
 
     task.innerHTML = `
       <div class="checkbox" onclick="toggleTask(this.parentElement)">
@@ -670,7 +677,7 @@
         </svg>
       </div>
       <div class="task-body">
-        <div class="task-title">${escapeHtml(row.name)}${fwdBadge}</div>
+        <div class="task-title">${escapeHtml(row.name)}${fwdBadge}${priBadge}</div>
         <div class="task-sub">${escapeHtml(row.note || '')} · <span class="origin-date">Added ${escapeHtml(row.origin_date || '')}</span></div>
       </div>
       <div class="task-actions">
@@ -698,18 +705,71 @@
     const active = visible.filter(row => !row.done);
     const completed = visible.filter(row => row.done);
 
-    const categories = {};
-    active.forEach(row => {
-      const cat = row.category || 'General';
-      if (!categories[cat]) categories[cat] = [];
-      categories[cat].push(row);
-    });
-    Object.entries(categories).forEach(([cat, items]) => {
+    const students = active.filter(r => r.category === 'Students');
+    const actionItems = active.filter(r => r.category === 'Action Items');
+    const otherActive = active.filter(r => r.category !== 'Students' && r.category !== 'Action Items');
+
+    // Render Students section
+    if (students.length > 0) {
       const label = document.createElement('div');
-      label.className = 'section-label'; label.textContent = cat;
+      label.className = 'section-label'; label.textContent = 'Students';
+      label.dataset.sectionCategory = 'Students';
       list.appendChild(label);
-      items.forEach(row => list.appendChild(createTaskEl(row)));
-    });
+      students.forEach(row => list.appendChild(createTaskEl(row)));
+    }
+
+    // Render Action Items with priority sub-sections
+    if (actionItems.length > 0) {
+      const label = document.createElement('div');
+      label.className = 'section-label'; label.textContent = 'Action Items';
+      label.dataset.sectionCategory = 'Action Items';
+      list.appendChild(label);
+
+      const highItems = actionItems.filter(r => r.priority === 'HIGH');
+      const medItems = actionItems.filter(r => r.priority === 'MED');
+      const lowItems = actionItems.filter(r => r.priority === 'LOW');
+      const noPriItems = actionItems.filter(r => !r.priority);
+
+      const highLabel = document.createElement('div');
+      highLabel.className = 'section-label priority-section priority-high-label';
+      highLabel.textContent = '● HIGH'; highLabel.dataset.priorityZone = 'HIGH';
+      highLabel.dataset.sectionCategory = 'Action Items';
+      list.appendChild(highLabel);
+      highItems.forEach(row => list.appendChild(createTaskEl(row)));
+
+      const medLabel = document.createElement('div');
+      medLabel.className = 'section-label priority-section priority-med-label';
+      medLabel.textContent = '● MED'; medLabel.dataset.priorityZone = 'MED';
+      medLabel.dataset.sectionCategory = 'Action Items';
+      list.appendChild(medLabel);
+      medItems.forEach(row => list.appendChild(createTaskEl(row)));
+
+      const lowLabel = document.createElement('div');
+      lowLabel.className = 'section-label priority-section priority-low-label';
+      lowLabel.textContent = '● LOW'; lowLabel.dataset.priorityZone = 'LOW';
+      lowLabel.dataset.sectionCategory = 'Action Items';
+      list.appendChild(lowLabel);
+      lowItems.forEach(row => list.appendChild(createTaskEl(row)));
+
+      noPriItems.forEach(row => list.appendChild(createTaskEl(row)));
+    }
+
+    // Render other categories
+    if (otherActive.length > 0) {
+      const categories = {};
+      otherActive.forEach(row => {
+        const cat = row.category || 'General';
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(row);
+      });
+      Object.entries(categories).forEach(([cat, items]) => {
+        const label = document.createElement('div');
+        label.className = 'section-label'; label.textContent = cat;
+        label.dataset.sectionCategory = cat;
+        list.appendChild(label);
+        items.forEach(row => list.appendChild(createTaskEl(row)));
+      });
+    }
 
     if (completed.length > 0) {
       const divider = document.createElement('div');
@@ -758,12 +818,13 @@
     if (!name) { document.getElementById('taskName').focus(); return; }
     const note = document.getElementById('taskNote').value.trim() || 'Follow-up pending';
     const category = document.getElementById('taskCategory').value;
+    const priority = category === 'Action Items' ? document.getElementById('taskPriority').value : null;
     const origin = formatShortDate(selectedDate);
     const position = document.querySelectorAll('.task').length;
 
     setSyncStatus('syncing', '⟳ Saving...');
     const { error } = await db.from('tasks').insert([{
-      name, note, category, origin_date: origin,
+      name, note, category, priority, origin_date: origin,
       display_date: origin, fwd_count: 0, done: false, position
     }]);
 
@@ -781,11 +842,9 @@
   async function toggleTask(el) {
     const id = el.dataset.id;
     const done = !el.classList.contains('done');
-    el.style.transition = 'opacity 0.3s, transform 0.3s';
-    el.style.opacity = '0';
-    el.style.transform = done ? 'translateY(8px)' : 'translateY(-8px)';
+    el.classList.toggle('done');
+    updateProgress();
     await db.from('tasks').update({ done }).eq('id', id);
-    setTimeout(() => loadTasks(), 300);
   }
 
   async function forwardTask(task) {
@@ -793,6 +852,7 @@
     const count = (parseInt(task.dataset.fwdCount) || 0) + 1;
     task.dataset.fwdCount = count;
 
+    // Compute next day from the task's current display_date (or origin_date)
     const currentDisplayDate = task.dataset.displayDate || task.dataset.originDate;
     const parts = currentDisplayDate.match(/(\w+)\s+(\d+),\s+(\d+)/);
     let baseDate;
@@ -808,49 +868,13 @@
 
     showToast(`Forwarded to ${DAYS_FULL[next.getDay()]}, ${MONTH_SHORT[next.getMonth()]} ${next.getDate()}`);
 
+    // Remove task from current view immediately
     task.style.transition = 'opacity 0.3s, transform 0.3s';
     task.style.opacity = '0';
     task.style.transform = 'translateX(10px)';
     setTimeout(() => { task.remove(); cleanEmptySections(); updateProgress(); checkEmpty(); }, 300);
 
     await db.from('tasks').update({ fwd_count: count, display_date: nextStr }).eq('id', id);
-  }
-
-  async function moveToMonday() {
-    const tasks = document.querySelectorAll('.task:not(.done)');
-    if (tasks.length === 0) { showToast('No uncompleted tasks to move'); return; }
-
-    const today = new Date(selectedDate);
-    const dayOfWeek = today.getDay();
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
-    const nextMonday = new Date(today);
-    nextMonday.setDate(today.getDate() + daysUntilMonday);
-    const mondayStr = formatShortDate(nextMonday);
-
-    const ids = [];
-    tasks.forEach(task => {
-      const id = task.dataset.id;
-      const count = (parseInt(task.dataset.fwdCount) || 0) + 1;
-      ids.push({ id, fwd_count: count });
-      task.style.transition = 'opacity 0.3s, transform 0.3s';
-      task.style.opacity = '0';
-      task.style.transform = 'translateX(10px)';
-    });
-
-    showToast(`Moving ${ids.length} task${ids.length > 1 ? 's' : ''} to Monday, ${mondayStr}`);
-
-    setSyncStatus('syncing', '⟳ Moving tasks...');
-    try {
-      await Promise.all(ids.map(u =>
-        db.from('tasks').update({ display_date: mondayStr, fwd_count: u.fwd_count }).eq('id', u.id)
-      ));
-      setSyncStatus('synced', '✓ Synced');
-      setTimeout(() => setSyncStatus('', ''), 2000);
-      setTimeout(() => loadTasks(), 350);
-    } catch (err) {
-      setSyncStatus('error', '✕ Move failed');
-      console.error('Move to Monday error:', err);
-    }
   }
 
   async function deleteTask(el) {
@@ -874,6 +898,8 @@
     document.getElementById('taskName').value = '';
     document.getElementById('taskNote').value = '';
     document.getElementById('taskCategory').value = 'Students';
+    document.getElementById('taskPriority').value = 'HIGH';
+    document.getElementById('priorityGroup').style.display = 'none';
   }
 
   document.getElementById('modalOverlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
@@ -883,6 +909,10 @@
   function cleanEmptySections() {
     const list = document.getElementById('taskList');
     list.querySelectorAll('.section-label').forEach(label => {
+      // Keep priority section labels as drop zones always
+      if (label.dataset.priorityZone) return;
+      // Keep the Action Items parent label if priority sub-sections exist
+      if (label.dataset.sectionCategory === 'Action Items' && !label.dataset.priorityZone && list.querySelector('[data-priority-zone]')) return;
       let next = label.nextSibling; let hasTasks = false;
       while (next) {
         if (next.classList && next.classList.contains('section-label')) break;
