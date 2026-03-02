@@ -2,8 +2,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="icon" href="/todo-workstream/favicon.ico" type="image/x-icon">
-<link rel="icon" href="/todo-workstream/favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>To Do</title>
@@ -207,7 +205,7 @@
   }
   .task:active { cursor: grabbing; }
   .task:hover { border-color: #9fa5ab; }
-  .task:hover .delete-btn, .task:hover .forward-btn { opacity: 1; }
+  .task:hover .delete-btn, .task:hover .forward-btn, .task:hover .edit-btn { opacity: 1; }
   .task.done { background: var(--done-bg); border-color: #bcd5c6; }
   .task.done .task-title { text-decoration: line-through; color: var(--muted); }
   .task.done .task-sub { color: #b0c4b8; }
@@ -273,7 +271,7 @@
 
   .task-actions { display: flex; align-items: flex-start; gap: 2px; flex-shrink: 0; margin-top: 1px; }
 
-  .delete-btn, .forward-btn {
+  .delete-btn, .forward-btn, .edit-btn {
     opacity: 0; background: none; border: none; cursor: pointer; padding: 3px 6px;
     border-radius: 6px; transition: opacity 0.2s, color 0.2s, background 0.2s;
     line-height: 1; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
@@ -283,6 +281,9 @@
   .forward-btn { color: var(--muted); }
   .forward-btn:hover { color: #2e3236; background: rgba(46,50,54,0.1); }
   .forward-btn svg { width: 15px; height: 15px; }
+  .edit-btn { color: var(--muted); }
+  .edit-btn:hover { color: #2e3236; background: rgba(46,50,54,0.1); }
+  .edit-btn svg { width: 14px; height: 14px; }
 
   .modal-overlay {
     display: none; position: fixed; inset: 0; background: rgba(26,18,8,0.45);
@@ -421,6 +422,34 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="editModalOverlay">
+  <div class="modal">
+    <h2>Edit Item</h2>
+    <input type="hidden" id="editTaskId" />
+    <label>Name / Task</label>
+    <input type="text" id="editTaskName" placeholder="Task name" />
+    <label>Note (optional)</label>
+    <textarea id="editTaskNote" placeholder="Notes" rows="3"></textarea>
+    <label>Category</label>
+    <select id="editTaskCategory" onchange="toggleEditPrioritySelect()">
+      <option value="Students">Students</option>
+      <option value="Action Items">Action Items</option>
+    </select>
+    <div id="editPriorityGroup" style="display:none;">
+      <label>Priority</label>
+      <select id="editTaskPriority">
+        <option value="HIGH">🔴 High</option>
+        <option value="MED">🟡 Medium</option>
+        <option value="LOW">🔵 Low</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="btn-add" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -525,12 +554,12 @@
   }
 
   function onMouseDown(e) {
-    if (e.target.closest('.checkbox') || e.target.closest('.delete-btn') || e.target.closest('.forward-btn')) return;
+    if (e.target.closest('.checkbox') || e.target.closest('.delete-btn') || e.target.closest('.forward-btn') || e.target.closest('.edit-btn')) return;
     e.preventDefault(); startDrag(e.currentTarget, e.clientX, e.clientY);
   }
 
   function onTouchStart(e) {
-    if (e.target.closest('.checkbox') || e.target.closest('.delete-btn') || e.target.closest('.forward-btn')) return;
+    if (e.target.closest('.checkbox') || e.target.closest('.delete-btn') || e.target.closest('.forward-btn') || e.target.closest('.edit-btn')) return;
     e.preventDefault(); const t = e.touches[0]; startDrag(e.currentTarget, t.clientX, t.clientY);
   }
 
@@ -688,6 +717,11 @@
         <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;font-weight:300;font-style:italic;opacity:0.75;">Added ${escapeHtml(row.origin_date || '')}</div>
       </div>
       <div class="task-actions">
+        <button class="edit-btn" onclick="openEditModal(this.closest('.task'))" title="Edit">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z"/>
+          </svg>
+        </button>
         <button class="forward-btn" onclick="forwardTask(this.closest('.task'))" title="Forward to tomorrow">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 8h10M9 4l4 4-4 4"/>
@@ -914,6 +948,60 @@
   document.getElementById('taskName').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
   // Ctrl+Enter or Cmd+Enter to submit from notes textarea
   document.getElementById('taskNote').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addTask(); });
+
+  // ── Edit Modal ──────────────────────────────────────────────
+  function openEditModal(taskEl) {
+    const id = taskEl.dataset.id;
+    const name = taskEl.querySelector('.task-title').childNodes[0].textContent.trim();
+    const noteEl = taskEl.querySelector('.task-sub');
+    const note = noteEl ? noteEl.textContent : '';
+    const category = taskEl.dataset.category || 'Students';
+    const priority = taskEl.dataset.priority || 'HIGH';
+
+    document.getElementById('editTaskId').value = id;
+    document.getElementById('editTaskName').value = name;
+    document.getElementById('editTaskNote').value = note;
+    document.getElementById('editTaskCategory').value = category;
+    document.getElementById('editTaskPriority').value = priority;
+    toggleEditPrioritySelect();
+    document.getElementById('editModalOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('editTaskName').focus(), 100);
+  }
+
+  function closeEditModal() {
+    document.getElementById('editModalOverlay').classList.remove('open');
+  }
+
+  function toggleEditPrioritySelect() {
+    const cat = document.getElementById('editTaskCategory').value;
+    document.getElementById('editPriorityGroup').style.display = cat === 'Action Items' ? 'block' : 'none';
+  }
+
+  async function saveEdit() {
+    const id = document.getElementById('editTaskId').value;
+    const name = document.getElementById('editTaskName').value.trim();
+    if (!name) { document.getElementById('editTaskName').focus(); return; }
+    const note = document.getElementById('editTaskNote').value.trim();
+    const category = document.getElementById('editTaskCategory').value;
+    const priority = category === 'Action Items' ? document.getElementById('editTaskPriority').value : null;
+
+    setSyncStatus('syncing', '⟳ Saving...');
+    const { error } = await db.from('tasks').update({ name, note, category, priority }).eq('id', id);
+    if (error) {
+      setSyncStatus('error', '✕ Save failed: ' + error.message);
+      console.error('Edit error:', error);
+      return;
+    }
+    setSyncStatus('synced', '✓ Saved');
+    setTimeout(() => setSyncStatus('', ''), 2000);
+    closeEditModal();
+    showToast('Task updated');
+    await loadTasks();
+  }
+
+  document.getElementById('editModalOverlay').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
+  document.getElementById('editTaskName').addEventListener('keydown', e => { if (e.key === 'Enter') saveEdit(); });
+  document.getElementById('editTaskNote').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit(); });
 
   function cleanEmptySections() {
     const list = document.getElementById('taskList');
