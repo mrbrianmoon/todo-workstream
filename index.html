@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -266,7 +267,7 @@
 
   .task-body { flex: 1; }
   .task-title { font-size: 1rem; font-weight: 500; transition: color 0.2s; }
-  .task-sub { font-size: 0.8rem; color: var(--muted); margin-top: 3px; font-weight: 300; transition: color 0.2s; }
+  .task-sub { font-size: 0.8rem; color: var(--muted); margin-top: 3px; font-weight: 300; transition: color 0.2s; white-space: pre-wrap; word-wrap: break-word; }
 
   .task-actions { display: flex; align-items: flex-start; gap: 2px; flex-shrink: 0; margin-top: 1px; }
 
@@ -294,12 +295,15 @@
   }
   .modal h2 { font-family: 'DM Serif Display', serif; font-size: 1.4rem; margin-bottom: 18px; color: var(--ink); }
   .modal label { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; }
-  .modal input, .modal select {
+  .modal input, .modal select, .modal textarea {
     width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 9px;
     font-family: 'DM Sans', sans-serif; font-size: 0.95rem; color: var(--ink);
     background: #cdd0d4; outline: none; transition: border-color 0.2s; margin-bottom: 16px;
   }
-  .modal input:focus, .modal select:focus { border-color: #2e3236; }
+  .modal textarea {
+    resize: vertical; min-height: 60px; max-height: 300px; line-height: 1.5;
+  }
+  .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: #2e3236; }
   .modal-actions { display: flex; gap: 10px; margin-top: 4px; }
   .btn-cancel {
     flex: 1; padding: 10px; border: 1.5px solid var(--border); border-radius: 9px;
@@ -372,7 +376,6 @@
         <div class="day-nav-divider"></div>
         <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
       </div>
-      <button class="move-monday-btn" onclick="moveToMonday()">Move to Monday</button>
     </div>
   </div>
   <button class="add-btn" onclick="openModal()" title="Add item">+</button>
@@ -395,7 +398,7 @@
     <label>Name / Task</label>
     <input type="text" id="taskName" placeholder="e.g. Kyanna Haynes" />
     <label>Note (optional)</label>
-    <input type="text" id="taskNote" placeholder="e.g. Contact via phone call" />
+    <textarea id="taskNote" placeholder="e.g. Contact via phone call" rows="3"></textarea>
     <label>Category</label>
     <select id="taskCategory" onchange="togglePrioritySelect()">
       <option value="Students">Students</option>
@@ -679,7 +682,8 @@
       </div>
       <div class="task-body">
         <div class="task-title">${escapeHtml(row.name)}${fwdBadge}${priBadge}</div>
-        <div class="task-sub">${escapeHtml(row.note || '')} · <span class="origin-date">Added ${escapeHtml(row.origin_date || '')}</span></div>
+        <div class="task-sub">${escapeHtml(row.note || '')}</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;font-weight:300;font-style:italic;opacity:0.75;">Added ${escapeHtml(row.origin_date || '')}</div>
       </div>
       <div class="task-actions">
         <button class="forward-btn" onclick="forwardTask(this.closest('.task'))" title="Forward to tomorrow">
@@ -878,42 +882,6 @@
     await db.from('tasks').update({ fwd_count: count, display_date: nextStr }).eq('id', id);
   }
 
-  async function moveToMonday() {
-    const tasks = document.querySelectorAll('.task:not(.done)');
-    if (tasks.length === 0) { showToast('No uncompleted tasks to move'); return; }
-
-    const today = new Date(selectedDate);
-    const dayOfWeek = today.getDay();
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek);
-    const nextMonday = new Date(today);
-    nextMonday.setDate(today.getDate() + daysUntilMonday);
-    const mondayStr = formatShortDate(nextMonday);
-
-    const ids = [];
-    tasks.forEach(task => {
-      const id = task.dataset.id;
-      const count = (parseInt(task.dataset.fwdCount) || 0) + 1;
-      ids.push({ id, fwd_count: count });
-      task.style.transition = 'opacity 0.3s, transform 0.3s';
-      task.style.opacity = '0';
-      task.style.transform = 'translateX(10px)';
-    });
-
-    showToast(`Moving ${ids.length} task${ids.length > 1 ? 's' : ''} to Monday, ${mondayStr}`);
-
-    setSyncStatus('syncing', '⟳ Moving tasks...');
-    try {
-      await Promise.all(ids.map(u =>
-        db.from('tasks').update({ display_date: mondayStr, fwd_count: u.fwd_count }).eq('id', u.id)
-      ));
-      setSyncStatus('synced', '✓ Synced');
-      setTimeout(() => setSyncStatus('', ''), 2000);
-      setTimeout(() => loadTasks(), 350);
-    } catch (err) {
-      setSyncStatus('error', '✕ Move failed');
-      console.error('Move to Monday error:', err);
-    }
-  }
 
   async function deleteTask(el) {
     const id = el.dataset.id;
@@ -942,7 +910,8 @@
 
   document.getElementById('modalOverlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
   document.getElementById('taskName').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
-  document.getElementById('taskNote').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+  // Ctrl+Enter or Cmd+Enter to submit from notes textarea
+  document.getElementById('taskNote').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addTask(); });
 
   function cleanEmptySections() {
     const list = document.getElementById('taskList');
