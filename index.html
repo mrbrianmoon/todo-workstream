@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="icon" href="/todo-workstream/favicon.ico" type="image/x-icon">
-<link rel="icon" href="/todo-workstream/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/your-repo-name/favicon.ico" type="image/x-icon">
+<link rel="icon" href="/your-repo-name/favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>To Do</title>
@@ -1530,16 +1529,31 @@
     children.forEach(child => {
       if (child.classList.contains('section-label')) {
         if (child.dataset.priorityZone) {
+          // Priority zone label: update priority AND category
+          // (priority zones always belong to a specific category)
           currentPriority = child.dataset.priorityZone;
+          if (child.dataset.sectionCategory) {
+            currentCategory = child.dataset.sectionCategory;
+          }
         } else if (child.classList.contains('completed-label')) {
           // don't change category for completed section
         } else {
+          // Regular section label: update category, reset priority
           currentCategory = child.dataset.sectionCategory || child.textContent;
           currentPriority = null;
         }
       } else if (child.classList.contains('task') && child.dataset.id) {
         const taskCat = currentCategory;
-        const taskPri = currentPriority;
+        // Only assign priority if category supports it
+        let taskPri = null;
+        if (activeTab === 'work') {
+          // On work tab, only Action Items get priority
+          taskPri = (taskCat === 'Action Items') ? currentPriority : null;
+        } else {
+          // On personal tab, all sections support priority
+          taskPri = currentPriority;
+        }
+
         updates.push({
           id: child.dataset.id,
           position: pos,
