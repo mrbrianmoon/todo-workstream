@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="icon" href="/todo-workstream/favicon.ico" type="image/x-icon">
-<link rel="icon" href="/todo-workstream/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/your-repo-name/favicon.ico" type="image/x-icon">
+<link rel="icon" href="/your-repo-name/favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>To Do</title>
@@ -945,7 +945,7 @@
           <div class="cal-grid" id="calGrid"></div>
         </div>
       </div>
-      <div class="day-nav-pill">
+      <div class="day-nav-pill" id="dayNavPill">
         <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
         <div class="day-nav-divider"></div>
         <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
@@ -1114,10 +1114,12 @@
       document.getElementById('pageTitle').textContent = 'Work';
       document.getElementById('pageSubtitle').textContent = 'Track outstanding tasks and action items';
       document.getElementById('sectionMgrBtn').style.display = 'none';
+      document.getElementById('dayNavPill').style.display = 'inline-flex';
     } else {
       document.getElementById('pageTitle').textContent = 'Personal';
       document.getElementById('pageSubtitle').textContent = 'Personal tasks and reminders';
       document.getElementById('sectionMgrBtn').style.display = 'inline-flex';
+      document.getElementById('dayNavPill').style.display = 'none';
     }
     loadTasks();
   }
@@ -1631,6 +1633,9 @@
       priBadge = `<span class="priority-badge ${priClass}">${priority}</span>`;
     }
 
+    const tabType = row.tab || 'work';
+    const hideForward = tabType === 'personal' ? 'style="display:none;"' : '';
+
     task.innerHTML = `
       <div class="checkbox" onclick="toggleTask(this.parentElement)">
         <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
@@ -1655,7 +1660,7 @@
             <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z"/>
           </svg>
         </button>
-        <button class="forward-btn" onclick="forwardTask(this.closest('.task'))" title="Forward to tomorrow">
+        <button class="forward-btn" ${hideForward} onclick="forwardTask(this.closest('.task'))" title="Forward to tomorrow">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"
                stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 8h10M9 4l4 4-4 4"/>
@@ -1676,11 +1681,15 @@
     const currentDateStr = formatShortDate(selectedDate);
     const sorted = [...rows].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
-    // Filter by tab AND date
+    // Filter by tab; work tab also filters by date, personal shows all
     const visible = sorted.filter(row => {
-      const taskDate = row.display_date || row.origin_date;
       const taskTab = row.tab || 'work';
-      return taskDate === currentDateStr && taskTab === activeTab;
+      if (taskTab !== activeTab) return false;
+      if (activeTab === 'work') {
+        const taskDate = row.display_date || row.origin_date;
+        return taskDate === currentDateStr;
+      }
+      return true; // personal: show all dates
     });
 
     if (activeTab === 'personal') {
