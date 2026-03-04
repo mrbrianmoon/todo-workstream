@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -890,6 +891,11 @@
     display: none !important;
   }
 
+  /* Hide the night sign circle */
+  .clock-widget .DPDCtn {
+    display: none !important;
+  }
+
   /* ── Animations ──────────────────────────────────────────────── */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(10px); }
@@ -1552,8 +1558,8 @@
           // On work tab, only Action Items get priority
           taskPri = (taskCat === 'Action Items') ? currentPriority : null;
         } else {
-          // On personal tab, all sections support priority
-          taskPri = currentPriority;
+          // On personal tab, no priority
+          taskPri = null;
         }
 
         updates.push({
@@ -1607,11 +1613,14 @@
   // ── Render Task from DB Row ───────────────────────────────────
   function createTaskEl(row) {
     const task = document.createElement('div');
+    const tabType = row.tab || 'work';
     const priority = row.priority || '';
     let priorityClass = '';
-    if (priority === 'HIGH') priorityClass = ' priority-high';
-    else if (priority === 'MED') priorityClass = ' priority-med';
-    else if (priority === 'LOW') priorityClass = ' priority-low';
+    if (tabType !== 'personal') {
+      if (priority === 'HIGH') priorityClass = ' priority-high';
+      else if (priority === 'MED') priorityClass = ' priority-med';
+      else if (priority === 'LOW') priorityClass = ' priority-low';
+    }
 
     task.className = 'task' + (row.done ? ' done' : '') + priorityClass;
     task.dataset.id = row.id;
@@ -1620,7 +1629,7 @@
     task.dataset.displayDate = row.display_date || row.origin_date || '';
     task.dataset.priority = priority;
     task.dataset.category = row.category || '';
-    task.dataset.tab = row.tab || 'work';
+    task.dataset.tab = tabType;
 
     const fwdCount = row.fwd_count || 0;
     const fwdBadge = fwdCount > 0
@@ -1628,12 +1637,11 @@
       : '';
 
     let priBadge = '';
-    if (priority) {
+    if (priority && tabType !== 'personal') {
       const priClass = priority.toLowerCase();
       priBadge = `<span class="priority-badge ${priClass}">${priority}</span>`;
     }
 
-    const tabType = row.tab || 'work';
     const hideForward = tabType === 'personal' ? 'style="display:none;"' : '';
 
     task.innerHTML = `
@@ -1706,39 +1714,7 @@
         label.dataset.sectionCategory = sectionName;
         list.appendChild(label);
 
-        // Group by priority within each section
-        const highItems = sectionTasks.filter(r => r.priority === 'HIGH');
-        const medItems = sectionTasks.filter(r => r.priority === 'MED');
-        const lowItems = sectionTasks.filter(r => r.priority === 'LOW');
-        const noPriItems = sectionTasks.filter(r => !r.priority);
-
-        if (highItems.length > 0 || medItems.length > 0 || lowItems.length > 0) {
-          const highLabel = document.createElement('div');
-          highLabel.className = 'section-label priority-section priority-high-label';
-          highLabel.textContent = '● HIGH';
-          highLabel.dataset.priorityZone = 'HIGH';
-          highLabel.dataset.sectionCategory = sectionName;
-          list.appendChild(highLabel);
-          highItems.forEach(row => list.appendChild(createTaskEl(row)));
-
-          const medLabel = document.createElement('div');
-          medLabel.className = 'section-label priority-section priority-med-label';
-          medLabel.textContent = '● MED';
-          medLabel.dataset.priorityZone = 'MED';
-          medLabel.dataset.sectionCategory = sectionName;
-          list.appendChild(medLabel);
-          medItems.forEach(row => list.appendChild(createTaskEl(row)));
-
-          const lowLabel = document.createElement('div');
-          lowLabel.className = 'section-label priority-section priority-low-label';
-          lowLabel.textContent = '● LOW';
-          lowLabel.dataset.priorityZone = 'LOW';
-          lowLabel.dataset.sectionCategory = sectionName;
-          list.appendChild(lowLabel);
-          lowItems.forEach(row => list.appendChild(createTaskEl(row)));
-        }
-
-        noPriItems.forEach(row => list.appendChild(createTaskEl(row)));
+        sectionTasks.forEach(row => list.appendChild(createTaskEl(row)));
       });
 
       // Tasks in sections that no longer exist
@@ -1905,7 +1881,7 @@
     let category, priority, tab;
     if (activeTab === 'personal') {
       category = document.getElementById('taskPersonalSection').value;
-      priority = document.getElementById('taskPriority').value || null;
+      priority = null;
       tab = 'personal';
     } else {
       category = document.getElementById('taskCategory').value;
@@ -2002,7 +1978,7 @@
     if (activeTab === 'personal') {
       document.getElementById('categoryGroup').style.display = 'none';
       document.getElementById('personalSectionGroup').style.display = 'block';
-      document.getElementById('priorityGroup').style.display = 'block';
+      document.getElementById('priorityGroup').style.display = 'none';
       document.getElementById('modalTitle').textContent = 'Add Personal Item';
       populateSectionDropdown('taskPersonalSection');
     } else {
@@ -2055,7 +2031,7 @@
     if (tab === 'personal') {
       document.getElementById('editCategoryGroup').style.display = 'none';
       document.getElementById('editPersonalSectionGroup').style.display = 'block';
-      document.getElementById('editPriorityGroup').style.display = 'block';
+      document.getElementById('editPriorityGroup').style.display = 'none';
       populateSectionDropdown('editTaskPersonalSection');
       document.getElementById('editTaskPersonalSection').value = category;
       document.getElementById('editTaskPriority').value = priority;
@@ -2095,7 +2071,7 @@
     let category, priority;
     if (activeTab === 'personal') {
       category = document.getElementById('editTaskPersonalSection').value;
-      priority = document.getElementById('editTaskPriority').value || null;
+      priority = null;
     } else {
       category = document.getElementById('editTaskCategory').value;
       priority = category === 'Action Items'
