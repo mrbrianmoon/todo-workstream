@@ -1934,6 +1934,7 @@
     }
 
     setSyncStatus('syncing', '⟳ Saving...');
+    suppressRealtime = true;
     const { error } = await db.from('tasks').insert([{
       name,
       note,
@@ -1957,6 +1958,7 @@
     setTimeout(() => setSyncStatus('', ''), 2000);
     closeModal();
     await loadTasks();
+    setTimeout(() => { suppressRealtime = false; }, 1500);
   }
 
   async function toggleTask(el) {
@@ -1964,7 +1966,9 @@
     const done = !el.classList.contains('done');
     el.classList.toggle('done');
     updateProgress();
+    suppressRealtime = true;
     await db.from('tasks').update({ done }).eq('id', id);
+    setTimeout(() => { suppressRealtime = false; }, 1500);
   }
 
   async function forwardTask(task) {
@@ -1998,7 +2002,9 @@
       checkEmpty();
     }, 300);
 
+    suppressRealtime = true;
     await db.from('tasks').update({ fwd_count: count, display_date: nextStr }).eq('id', id);
+    setTimeout(() => { suppressRealtime = false; }, 1500);
   }
 
   async function deleteTask(el) {
@@ -2011,7 +2017,11 @@
       cleanEmptySections();
       updateProgress();
       checkEmpty();
-      if (id) await db.from('tasks').delete().eq('id', id);
+      if (id) {
+        suppressRealtime = true;
+        await db.from('tasks').delete().eq('id', id);
+        setTimeout(() => { suppressRealtime = false; }, 1500);
+      }
     }, 200);
   }
 
@@ -2122,6 +2132,7 @@
     }
 
     setSyncStatus('syncing', '⟳ Saving...');
+    suppressRealtime = true;
     const { error } = await db.from('tasks')
       .update({ name, note, category, priority })
       .eq('id', id);
@@ -2137,6 +2148,7 @@
     closeEditModal();
     showToast('Task updated');
     await loadTasks();
+    setTimeout(() => { suppressRealtime = false; }, 1500);
   }
 
   document.getElementById('editModalOverlay').addEventListener('click', function(e) {
