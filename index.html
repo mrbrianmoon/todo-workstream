@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1589,6 +1588,7 @@
     });
 
     setSyncStatus('syncing', '⟳ Saving order...');
+    suppressRealtime = true;
     try {
       await Promise.all(updates.map(u =>
         db.from('tasks').update({
@@ -1603,6 +1603,7 @@
       setSyncStatus('error', '✕ Sync failed');
       console.error('Position save error:', err);
     }
+    setTimeout(() => { suppressRealtime = false; }, 1500);
   }
 
   // ── Render Task from DB Row ───────────────────────────────────
@@ -1876,13 +1877,17 @@
 
   // ── Real-time Subscription ────────────────────────────────────
   let realtimeTimer = null;
+  let suppressRealtime = false;
+
   function debouncedLoadTasks() {
+    if (suppressRealtime) return;
     clearTimeout(realtimeTimer);
     realtimeTimer = setTimeout(() => loadTasks(), 500);
   }
 
   let realtimeSectionsTimer = null;
   function debouncedLoadSections() {
+    if (suppressRealtime) return;
     clearTimeout(realtimeSectionsTimer);
     realtimeSectionsTimer = setTimeout(async () => {
       await loadPersonalSections();
