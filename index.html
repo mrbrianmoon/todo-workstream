@@ -2,8 +2,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="icon" href="/todo-workstream/favicon.ico" type="image/x-icon">
-<link rel="icon" href="/todo-workstream/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/your-repo-name/favicon.ico" type="image/x-icon">
+<link rel="icon" href="/your-repo-name/favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>To Do</title>
@@ -891,11 +891,6 @@
     display: none !important;
   }
 
-  /* Hide the night sign circle */
-  .clock-widget .DPDCtn {
-    display: none !important;
-  }
-
   /* ── Animations ──────────────────────────────────────────────── */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(10px); }
@@ -978,8 +973,8 @@
         .DPDCdm::after{content:' '}
         .DPDCda::after{content:', '}
         .DPDCdt{margin-right:.48em}
-        .DPDCtn{display: none;position:relative;width:13px;height:13px;border:2px solid;border-radius:50%;overflow:hidden}
-        .DPDCtn>i{display: none;content:'';position:absolute;right:33%;top:-5%;width:85%;height:85%;border-radius:50%}
+        .DPDCtn{display:inline-block;position:relative;width:13px;height:13px;border:2px solid;border-radius:50%;overflow:hidden}
+        .DPDCtn>i{display:block;content:'';position:absolute;right:33%;top:-5%;width:85%;height:85%;border-radius:50%}
         .DPDCs{margin:.96em 0 0 -3px;font-size:90%;line-height:1;white-space:nowrap}
         .DPDCs sup{padding-left:.24em;font-size:65%}
         .DPDCsl::before,.DPDCsl::after{display:inline-block;opacity:.4}
@@ -1558,8 +1553,8 @@
           // On work tab, only Action Items get priority
           taskPri = (taskCat === 'Action Items') ? currentPriority : null;
         } else {
-          // On personal tab, no priority
-          taskPri = null;
+          // On personal tab, all sections support priority
+          taskPri = currentPriority;
         }
 
         updates.push({
@@ -1613,14 +1608,11 @@
   // ── Render Task from DB Row ───────────────────────────────────
   function createTaskEl(row) {
     const task = document.createElement('div');
-    const tabType = row.tab || 'work';
     const priority = row.priority || '';
     let priorityClass = '';
-    if (tabType !== 'personal') {
-      if (priority === 'HIGH') priorityClass = ' priority-high';
-      else if (priority === 'MED') priorityClass = ' priority-med';
-      else if (priority === 'LOW') priorityClass = ' priority-low';
-    }
+    if (priority === 'HIGH') priorityClass = ' priority-high';
+    else if (priority === 'MED') priorityClass = ' priority-med';
+    else if (priority === 'LOW') priorityClass = ' priority-low';
 
     task.className = 'task' + (row.done ? ' done' : '') + priorityClass;
     task.dataset.id = row.id;
@@ -1629,7 +1621,7 @@
     task.dataset.displayDate = row.display_date || row.origin_date || '';
     task.dataset.priority = priority;
     task.dataset.category = row.category || '';
-    task.dataset.tab = tabType;
+    task.dataset.tab = row.tab || 'work';
 
     const fwdCount = row.fwd_count || 0;
     const fwdBadge = fwdCount > 0
@@ -1637,11 +1629,12 @@
       : '';
 
     let priBadge = '';
-    if (priority && tabType !== 'personal') {
+    if (priority) {
       const priClass = priority.toLowerCase();
       priBadge = `<span class="priority-badge ${priClass}">${priority}</span>`;
     }
 
+    const tabType = row.tab || 'work';
     const hideForward = tabType === 'personal' ? 'style="display:none;"' : '';
 
     task.innerHTML = `
@@ -1714,7 +1707,39 @@
         label.dataset.sectionCategory = sectionName;
         list.appendChild(label);
 
-        sectionTasks.forEach(row => list.appendChild(createTaskEl(row)));
+        // Group by priority within each section
+        const highItems = sectionTasks.filter(r => r.priority === 'HIGH');
+        const medItems = sectionTasks.filter(r => r.priority === 'MED');
+        const lowItems = sectionTasks.filter(r => r.priority === 'LOW');
+        const noPriItems = sectionTasks.filter(r => !r.priority);
+
+        if (highItems.length > 0 || medItems.length > 0 || lowItems.length > 0) {
+          const highLabel = document.createElement('div');
+          highLabel.className = 'section-label priority-section priority-high-label';
+          highLabel.textContent = '● HIGH';
+          highLabel.dataset.priorityZone = 'HIGH';
+          highLabel.dataset.sectionCategory = sectionName;
+          list.appendChild(highLabel);
+          highItems.forEach(row => list.appendChild(createTaskEl(row)));
+
+          const medLabel = document.createElement('div');
+          medLabel.className = 'section-label priority-section priority-med-label';
+          medLabel.textContent = '● MED';
+          medLabel.dataset.priorityZone = 'MED';
+          medLabel.dataset.sectionCategory = sectionName;
+          list.appendChild(medLabel);
+          medItems.forEach(row => list.appendChild(createTaskEl(row)));
+
+          const lowLabel = document.createElement('div');
+          lowLabel.className = 'section-label priority-section priority-low-label';
+          lowLabel.textContent = '● LOW';
+          lowLabel.dataset.priorityZone = 'LOW';
+          lowLabel.dataset.sectionCategory = sectionName;
+          list.appendChild(lowLabel);
+          lowItems.forEach(row => list.appendChild(createTaskEl(row)));
+        }
+
+        noPriItems.forEach(row => list.appendChild(createTaskEl(row)));
       });
 
       // Tasks in sections that no longer exist
@@ -1850,19 +1875,31 @@
   }
 
   // ── Real-time Subscription ────────────────────────────────────
+  let realtimeTimer = null;
+  function debouncedLoadTasks() {
+    clearTimeout(realtimeTimer);
+    realtimeTimer = setTimeout(() => loadTasks(), 500);
+  }
+
+  let realtimeSectionsTimer = null;
+  function debouncedLoadSections() {
+    clearTimeout(realtimeSectionsTimer);
+    realtimeSectionsTimer = setTimeout(async () => {
+      await loadPersonalSections();
+      await loadTasks();
+    }, 500);
+  }
+
   db.channel('tasks-realtime')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, () => loadTasks())
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, () => loadTasks())
-    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, () => loadTasks())
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, () => debouncedLoadTasks())
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, () => debouncedLoadTasks())
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, () => debouncedLoadTasks())
     .subscribe((status) => {
       console.log('Realtime tasks status:', status);
     });
 
   db.channel('sections-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'personal_sections' }, async () => {
-      await loadPersonalSections();
-      await loadTasks();
-    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'personal_sections' }, () => debouncedLoadSections())
     .subscribe((status) => {
       console.log('Realtime sections status:', status);
     });
@@ -1881,7 +1918,7 @@
     let category, priority, tab;
     if (activeTab === 'personal') {
       category = document.getElementById('taskPersonalSection').value;
-      priority = null;
+      priority = document.getElementById('taskPriority').value || null;
       tab = 'personal';
     } else {
       category = document.getElementById('taskCategory').value;
@@ -1978,7 +2015,7 @@
     if (activeTab === 'personal') {
       document.getElementById('categoryGroup').style.display = 'none';
       document.getElementById('personalSectionGroup').style.display = 'block';
-      document.getElementById('priorityGroup').style.display = 'none';
+      document.getElementById('priorityGroup').style.display = 'block';
       document.getElementById('modalTitle').textContent = 'Add Personal Item';
       populateSectionDropdown('taskPersonalSection');
     } else {
@@ -2031,7 +2068,7 @@
     if (tab === 'personal') {
       document.getElementById('editCategoryGroup').style.display = 'none';
       document.getElementById('editPersonalSectionGroup').style.display = 'block';
-      document.getElementById('editPriorityGroup').style.display = 'none';
+      document.getElementById('editPriorityGroup').style.display = 'block';
       populateSectionDropdown('editTaskPersonalSection');
       document.getElementById('editTaskPersonalSection').value = category;
       document.getElementById('editTaskPriority').value = priority;
@@ -2071,7 +2108,7 @@
     let category, priority;
     if (activeTab === 'personal') {
       category = document.getElementById('editTaskPersonalSection').value;
-      priority = null;
+      priority = document.getElementById('editTaskPriority').value || null;
     } else {
       category = document.getElementById('editTaskCategory').value;
       priority = category === 'Action Items'
