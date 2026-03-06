@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -144,12 +145,6 @@
     border-radius: 99px;
     overflow: hidden;
     margin-top: 12px;
-  }
-
-  .day-nav-wrap {
-    max-width: 760px;
-    margin: -20px auto 20px;
-    text-align: center;
   }
 
   .day-nav-btn {
@@ -437,8 +432,8 @@
   .task:hover .edit-btn { opacity: 1; }
 
   .task.done {
-    background: var(--card);
-    border-color: var(--border);
+    background: var(--done-bg);
+    border-color: #bcd5c6;
   }
 
   .task.done .task-title {
@@ -447,7 +442,7 @@
   }
 
   .task.done .task-sub {
-    color: var(--ink);
+    color: #b0c4b8;
   }
 
   .task.dragging {
@@ -952,8 +947,15 @@
           <div class="cal-grid" id="calGrid"></div>
         </div>
       </div>
+      <div class="day-nav-pill" id="dayNavPill">
+        <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
+        <div class="day-nav-divider"></div>
+        <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
+      </div>
+    </div>
     <br>
     <button class="section-mgr-btn" id="sectionMgrBtn" onclick="openSectionMgr()" style="display:none;">
+      ✎ Manage Sections
     </button>
   </div>
   <div class="clock-widget">
@@ -994,14 +996,6 @@
   </div>
   <button class="add-btn" onclick="openModal()" title="Add item">+</button>
 </header>
-
-<div class="day-nav-wrap" id="dayNavWrap">
-  <div class="day-nav-pill" id="dayNavPill">
-    <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
-    <div class="day-nav-divider"></div>
-    <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
-  </div>
-</div>
 
 <div class="progress-bar-wrap">
   <div class="progress-bar-fill" id="bar"></div>
@@ -1122,12 +1116,12 @@
       document.getElementById('pageTitle').textContent = 'Work';
       document.getElementById('pageSubtitle').textContent = 'Track outstanding tasks and action items';
       document.getElementById('sectionMgrBtn').style.display = 'none';
-      document.getElementById('dayNavPill').style.display = 'block';
+      document.getElementById('dayNavPill').style.display = 'inline-flex';
     } else {
       document.getElementById('pageTitle').textContent = 'Personal';
       document.getElementById('pageSubtitle').textContent = 'Personal tasks and reminders';
       document.getElementById('sectionMgrBtn').style.display = 'inline-flex';
-      document.getElementById('dayNavWrap').style.display = 'block';
+      document.getElementById('dayNavPill').style.display = 'none';
     }
     loadTasks();
   }
