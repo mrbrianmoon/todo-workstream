@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -891,13 +889,7 @@
   .clock-widget .DPDCs {
     display: none !important;
   }
-  
-  .clock-widget .DPDCtn {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  overflow: hidden !important;
-}
+
   /* ── Animations ──────────────────────────────────────────────── */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(10px); }
@@ -1904,17 +1896,39 @@
   }
 
   db.channel('tasks-realtime')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, () => debouncedLoadTasks())
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, () => debouncedLoadTasks())
-    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, () => debouncedLoadTasks())
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'tasks' },
+      () => debouncedLoadTasks()
+    )
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'tasks' },
+      () => debouncedLoadTasks()
+    )
+    .on(
+      'postgres_changes',
+      { event: 'DELETE', schema: 'public', table: 'tasks' },
+      () => debouncedLoadTasks()
+    )
     .subscribe((status) => {
       console.log('Realtime tasks status:', status);
+      if (status === 'SUBSCRIBED') {
+        console.log('✓ Real-time task updates enabled');
+      }
     });
 
   db.channel('sections-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'personal_sections' }, () => debouncedLoadSections())
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'personal_sections' },
+      () => debouncedLoadSections()
+    )
     .subscribe((status) => {
       console.log('Realtime sections status:', status);
+      if (status === 'SUBSCRIBED') {
+        console.log('✓ Real-time section updates enabled');
+      }
     });
 
   // ── CRUD ──────────────────────────────────────────────────────
@@ -1972,11 +1986,22 @@
   async function toggleTask(el) {
     const id = el.dataset.id;
     const done = !el.classList.contains('done');
-    el.classList.toggle('done');
-    updateProgress();
-    suppressRealtime = true;
-    await db.from('tasks').update({ done }).eq('id', id);
-    setTimeout(() => { suppressRealtime = false; }, 1500);
+    
+    el.style.transition = 'opacity 0.3s, transform 0.3s';
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(10px)';
+    
+    setTimeout(async () => {
+      el.remove();
+      cleanEmptySections();
+      updateProgress();
+      checkEmpty();
+      
+      suppressRealtime = true;
+      await db.from('tasks').update({ done }).eq('id', id);
+      await loadTasks();
+      setTimeout(() => { suppressRealtime = false; }, 1500);
+    }, 300);
   }
 
   async function forwardTask(task) {
