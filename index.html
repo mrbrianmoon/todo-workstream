@@ -474,19 +474,12 @@
 
   /* ── Priority Section Labels ─────────────────────────────────── */
   .section-label.priority-section {
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    padding: 4px 10px;
-    border-radius: 6px;
-    margin-top: 6px;
-    margin-bottom: 4px;
-    display: inline-block;
+    display: none !important;
   }
 
-  .section-label.priority-high-label { background: var(--high-bg); color: var(--high-label); border: 1px solid var(--high-border); }
-  .section-label.priority-med-label { background: var(--med-bg); color: var(--med-label); border: 1px solid var(--med-border); }
-  .section-label.priority-low-label { background: var(--low-bg); color: var(--low-label); border: 1px solid var(--low-border); }
+  .section-label.priority-high-label { display: none !important; background: var(--high-bg); color: var(--high-label); border: 1px solid var(--high-border); }
+  .section-label.priority-med-label { display: none !important; background: var(--med-bg); color: var(--med-label); border: 1px solid var(--med-border); }
+  .section-label.priority-low-label { display: none !important; background: var(--low-bg); color: var(--low-label); border: 1px solid var(--low-border); }
 
   /* ── Forwarded Badge ─────────────────────────────────────────── */
   .forwarded-badge {
