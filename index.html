@@ -1777,10 +1777,11 @@
   function reconcileDOM(plan) {
     const list = document.getElementById('taskList');
 
-    // Build a map of currently rendered task elements keyed by task id
+    // Build a map of currently rendered task elements keyed by task id.
+    // Exclude nodes mid-animation (data-removing) so they are discarded, not reused.
     const existingTaskEls = {};
     list.querySelectorAll('.task[data-id]').forEach(el => {
-      existingTaskEls[el.dataset.id] = el;
+      if (!el.dataset.removing) existingTaskEls[el.dataset.id] = el;
     });
 
     // Build the desired set of DOM nodes in order
@@ -2012,22 +2013,18 @@
     const id = el.dataset.id;
     const done = !el.classList.contains('done');
 
-    // Animate the task out first, then update DB + re-render
+    // Animate the toggled task out visually, but leave it in the DOM so the
+    // reconciler can still find and reuse all other task nodes (no flicker).
     el.style.transition = 'opacity 0.3s, transform 0.3s';
     el.style.opacity = '0';
     el.style.transform = 'translateX(10px)';
+    // Mark it so reconcileDOM won't try to reuse this specific node
+    el.dataset.removing = '1';
 
-    setTimeout(async () => {
-      el.remove();
-      cleanEmptySections();
-      updateProgress();
-      checkEmpty();
-
-      suppressRealtime = true;
-      await db.from('tasks').update({ done }).eq('id', id);
-      await loadTasks();
-      setTimeout(() => { suppressRealtime = false; }, 1500);
-    }, 300);
+    suppressRealtime = true;
+    await db.from('tasks').update({ done }).eq('id', id);
+    await loadTasks();
+    setTimeout(() => { suppressRealtime = false; }, 1500);
   }
 
   async function forwardTask(task) {
