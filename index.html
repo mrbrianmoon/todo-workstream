@@ -1777,28 +1777,40 @@
   function reconcileDOM(plan) {
     const list = document.getElementById('taskList');
 
-    // Build a map of currently rendered task elements keyed by task id.
-    // Exclude nodes mid-animation (data-removing) so they are discarded, not reused.
+    // Build a map of existing task elements keyed by task id.
+    // Exclude nodes mid-animation so they are discarded, not reused.
     const existingTaskEls = {};
     list.querySelectorAll('.task[data-id]').forEach(el => {
       if (!el.dataset.removing) existingTaskEls[el.dataset.id] = el;
     });
 
+    // Build a map of existing label elements keyed by their render-plan key
+    // so labels (including the Completed divider) are reused, not recreated.
+    const existingLabelEls = {};
+    list.querySelectorAll('.section-label[data-reconcile-key]').forEach(el => {
+      existingLabelEls[el.dataset.reconcileKey] = el;
+    });
+
     // Build the desired set of DOM nodes in order
     const desiredNodes = plan.map(item => {
       if (item.type === 'label') {
+        const existing = existingLabelEls[item.key];
+        if (existing) {
+          delete existingLabelEls[item.key]; // mark as consumed
+          return existing;
+        }
         const el = document.createElement('div');
         el.className = item.className;
         el.textContent = item.text;
+        el.dataset.reconcileKey = item.key;
         if (item.dataset) {
           Object.entries(item.dataset).forEach(([k, v]) => { el.dataset[k] = v; });
         }
         return el;
       } else {
-        // task node — reuse existing element if present, otherwise create fresh
+        // task node: reuse existing element if present, otherwise create fresh
         const existing = existingTaskEls[item.row.id];
         if (existing) {
-          // Update mutable attributes in-place so the element doesn't flash
           updateTaskEl(existing, item.row);
           delete existingTaskEls[item.row.id]; // mark as consumed
           return existing;
@@ -1808,10 +1820,11 @@
       }
     });
 
-    // Remove any task elements that are no longer in the plan
+    // Remove any nodes that are no longer in the plan
     Object.values(existingTaskEls).forEach(el => el.remove());
+    Object.values(existingLabelEls).forEach(el => el.remove());
 
-    // Now reconcile child order without touching nodes that are already correct
+    // Reconcile child order without touching nodes that are already in place
     desiredNodes.forEach((node, i) => {
       const current = list.children[i];
       if (current !== node) {
@@ -1819,7 +1832,7 @@
       }
     });
 
-    // Remove any extra trailing children (e.g. stale labels)
+    // Remove any extra trailing children
     while (list.children.length > desiredNodes.length) {
       list.removeChild(list.lastChild);
     }
