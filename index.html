@@ -1820,11 +1820,18 @@
       }
     });
 
-    // Remove any nodes that are no longer in the plan
+    // Remove stale nodes that are no longer in the plan
     Object.values(existingTaskEls).forEach(el => el.remove());
     Object.values(existingLabelEls).forEach(el => el.remove());
 
-    // Reconcile child order without touching nodes that are already in place
+    // Remove data-removing nodes now — they have finished animating out and
+    // are no longer referenced by desiredNodes, so pull them before the
+    // position reconciliation so they don't skew the index comparison.
+    list.querySelectorAll('[data-removing]').forEach(el => el.remove());
+
+    // Reconcile child order. Compare against the live children list (which no
+    // longer contains the removed animation node) so indices are exact and
+    // nodes already in the right slot are never touched.
     desiredNodes.forEach((node, i) => {
       const current = list.children[i];
       if (current !== node) {
