@@ -2026,18 +2026,27 @@
     const id = el.dataset.id;
     const done = !el.classList.contains('done');
 
-    // Animate the toggled task out visually, but leave it in the DOM so the
-    // reconciler can still find and reuse all other task nodes (no flicker).
+    // Update cachedRows immediately so the DOM move is driven by local state,
+    // not a network round-trip. No loadTasks() call = no flicker on other tasks.
+    const cached = cachedRows.find(r => String(r.id) === String(id));
+    if (cached) cached.done = done;
+
+    // Animate the toggled task out, then re-render from the updated cache.
+    // Only this task moves; every other node is reused in-place by reconcileDOM.
     el.style.transition = 'opacity 0.3s, transform 0.3s';
     el.style.opacity = '0';
     el.style.transform = 'translateX(10px)';
-    // Mark it so reconcileDOM won't try to reuse this specific node
     el.dataset.removing = '1';
 
+    setTimeout(() => {
+      renderAllTasks(cachedRows);
+    }, 300);
+
+    // Write to DB in the background — no await needed here, realtime is suppressed
     suppressRealtime = true;
-    await db.from('tasks').update({ done }).eq('id', id);
-    await loadTasks();
-    setTimeout(() => { suppressRealtime = false; }, 1500);
+    db.from('tasks').update({ done }).eq('id', id).then(() => {
+      setTimeout(() => { suppressRealtime = false; }, 1500);
+    });
   }
 
   async function forwardTask(task) {
