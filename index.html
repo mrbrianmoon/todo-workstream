@@ -1513,84 +1513,102 @@
 
   // ── Save Positions ────────────────────────────────────────────
   async function savePositions() {
-    const list = document.getElementById('taskList');
-    const children = [...list.children];
-    let currentCategory = (activeTab === 'personal') ? (personalSections[0] || 'General') : 'General';
-    let currentPriority = null;
-    const updates = [];
-    let pos = 0;
+  const list = document.getElementById('taskList');
+  const children = [...list.children];
 
-    children.forEach(child => {
-      if (child.classList.contains('section-label')) {
-        if (child.dataset.priorityZone) {
-          currentPriority = child.dataset.priorityZone;
-          if (child.dataset.sectionCategory) {
-            currentCategory = child.dataset.sectionCategory;
-          }
-        } else if (child.classList.contains('completed-label')) {
-          // don't change category for completed section
-        } else {
-          currentCategory = child.dataset.sectionCategory || child.textContent;
-          currentPriority = null;
+  let currentCategory = (activeTab === 'personal')
+    ? (personalSections[0] || 'General')
+    : 'Students';
+  let currentPriority = null;
+  const updates = [];
+  let pos = 0;
+
+  children.forEach(child => {
+    if (child.classList.contains('section-label')) {
+      const isPriorityZone = !!child.dataset.priorityZone;
+
+      if (isPriorityZone) {
+        // e.g. "● HIGH" under Action Items — update priority AND keep category
+        currentPriority = child.dataset.priorityZone;          // 'HIGH' | 'MED' | 'LOW'
+        currentCategory = child.dataset.sectionCategory || currentCategory;
+      } else if (!child.classList.contains('completed-label')) {
+        // Plain section label (Students, Action Items, General, personal section)
+        currentCategory = child.dataset.sectionCategory || child.textContent.trim();
+        currentPriority = null;   // reset priority when entering a new plain section
+      }
+
+    } else if (child.classList.contains('task') && child.dataset.id) {
+
+      // A task only carries priority when it's in a priority-supporting section
+      const supportsPriority =
+        activeTab === 'personal' ||          // personal tasks always can have priority
+        currentCategory === 'Action Items';  // work tab: only Action Items section
+
+      const taskPriority = supportsPriority ? currentPriority : null;
+
+      updates.push({
+        id:       child.dataset.id,
+        position: pos,
+        category: currentCategory,
+        priority: taskPriority
+      });
+
+      // Keep the task's visual state in sync with its new home
+      child.dataset.category = currentCategory;
+      child.dataset.priority = taskPriority || '';
+      child.classList.remove('priority-high', 'priority-med', 'priority-low');
+      if (taskPriority) {
+        child.classList.add('priority-' + taskPriority.toLowerCase());
+      }
+
+      // Rebuild the priority badge inside the title
+      const titleEl = child.querySelector('.task-title');
+      if (titleEl) {
+        const oldBadge = titleEl.querySelector('.priority-badge');
+        if (oldBadge) oldBadge.remove();
+        if (taskPriority) {
+          const badge = document.createElement('span');
+          badge.className = 'priority-badge ' + taskPriority.toLowerCase();
+          badge.textContent = taskPriority;
+          titleEl.appendChild(badge);
         }
-      } else if (child.classList.contains('task') && child.dataset.id) {
-        const taskCat = currentCategory;
-        let taskPri = null;
-        if (activeTab === 'work') {
-          taskPri = (taskCat === 'Action Items') ? currentPriority : null;
-        } else {
-          taskPri = currentPriority;
-        }
+      }
 
-        updates.push({
-          id: child.dataset.id,
-          position: pos,
-          category: taskCat,
-          priority: taskPri
-        });
+      pos++;
+    }
+  });
 
-        child.classList.remove('priority-high', 'priority-med', 'priority-low');
-        child.dataset.priority = taskPri || '';
-        child.dataset.category = taskCat;
+  setSyncStatus('syncing', '⟳ Saving order...');
+  suppressRealtime = true;
+  try {
+    await Promise.all(updates.map(u =>
+      db.from('tasks').update({
+        position: u.position,
+        category: u.category,
+        priority: u.priority
+      }).eq('id', u.id)
+    ));
 
-        if (taskPri) {
-          child.classList.add('priority-' + taskPri.toLowerCase());
-          const oldBadge = child.querySelector('.priority-badge');
-          if (oldBadge) oldBadge.remove();
-          const titleEl = child.querySelector('.task-title');
-          if (titleEl) {
-            const badge = document.createElement('span');
-            badge.className = 'priority-badge ' + taskPri.toLowerCase();
-            badge.textContent = taskPri;
-            titleEl.appendChild(badge);
-          }
-        } else {
-          const oldBadge = child.querySelector('.priority-badge');
-          if (oldBadge) oldBadge.remove();
-        }
-        pos++;
+    // After persisting, re-render from the updated cache so the section
+    // structure rebuilds correctly (Students vs Action Items grouping).
+    updates.forEach(u => {
+      const cached = cachedRows.find(r => String(r.id) === String(u.id));
+      if (cached) {
+        cached.position = u.position;
+        cached.category = u.category;
+        cached.priority = u.priority;
       }
     });
+    renderAllTasks(cachedRows);
 
-    setSyncStatus('syncing', '⟳ Saving order...');
-    suppressRealtime = true;
-    try {
-      await Promise.all(updates.map(u =>
-        db.from('tasks').update({
-          position: u.position,
-          category: u.category,
-          priority: u.priority
-        }).eq('id', u.id)
-      ));
-      setSyncStatus('synced', '✓ Synced');
-      setTimeout(() => setSyncStatus('', ''), 2000);
-    } catch (err) {
-      setSyncStatus('error', '✕ Sync failed');
-      console.error('Position save error:', err);
-    }
-    setTimeout(() => { suppressRealtime = false; }, 1500);
+    setSyncStatus('synced', '✓ Synced');
+    setTimeout(() => setSyncStatus('', ''), 2000);
+  } catch (err) {
+    setSyncStatus('error', '✕ Sync failed');
+    console.error('Position save error:', err);
   }
-
+  setTimeout(() => { suppressRealtime = false; }, 1500);
+}
   // ── Build the canonical ordered list of items to render ───────
   // Returns an array of descriptor objects: { type: 'label'|'task', ... }
   function buildRenderPlan(rows) {
