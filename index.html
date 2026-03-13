@@ -938,10 +938,12 @@
           <div class="cal-grid" id="calGrid"></div>
         </div>
       </div>
-      <div class="day-nav-pill" id="dayNavPill">
-        <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
-        <div class="day-nav-divider"></div>
-        <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
+      <div id="dayNavPillWrap" style="position:absolute; left:50vw; transform:translateX(-50%); top:0; pointer-events:none;">
+        <div class="day-nav-pill" id="dayNavPill" style="pointer-events:auto;">
+          <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
+          <div class="day-nav-divider"></div>
+          <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
+        </div>
       </div>
     </div>
     <br>
