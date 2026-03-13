@@ -979,7 +979,7 @@
     </div>
   </div>
   <button class="add-btn" onclick="openModal()" title="Add item">+</button>
-  <div class="day-nav-pill" id="dayNavPill" style="position:absolute; left:50%; transform:translateX(-50%); bottom:0;">
+  <div class="day-nav-pill" id="dayNavPill" style="position:fixed; left:50%; transform:translateX(-50%); top:0; z-index:50;">
     <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
     <div class="day-nav-divider"></div>
     <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
@@ -1109,6 +1109,7 @@
       document.getElementById('pageSubtitle').textContent = 'Track outstanding tasks and action items';
       document.getElementById('sectionMgrBtn').style.display = 'none';
       document.getElementById('dayNavPill').style.display = 'inline-flex';
+      positionPill();
     } else {
       document.getElementById('pageTitle').textContent = 'Personal';
       document.getElementById('pageSubtitle').textContent = 'Personal tasks and reminders';
@@ -2238,10 +2239,23 @@
               .replace(/"/g,'&quot;');
   }
 
+  // ── Position pill vertically to match the date badge row ─────
+  function positionPill() {
+    const badge = document.getElementById('dateBadge');
+    const pill  = document.getElementById('dayNavPill');
+    if (!badge || !pill) return;
+    const rect = badge.getBoundingClientRect();
+    const pillH = pill.offsetHeight;
+    pill.style.top = (rect.top + (rect.height / 2) - (pillH / 2)) + 'px';
+  }
+
+  window.addEventListener('resize', positionPill);
+
   // ── Init ──────────────────────────────────────────────────────
   async function init() {
     await loadPersonalSections();
     await loadTasks();
+    positionPill();
   }
 
   init();
