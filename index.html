@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1589,13 +1590,17 @@
           priority: u.priority
         }).eq('id', u.id)
       ));
-      setSyncStatus('synced', '✓ Synced');
-      setTimeout(() => setSyncStatus('', ''), 2000);
+      // Reconcile section headers after the drag. The DB writes are done so
+      // loadTasks() now has correct ground-truth. reconcileDOM reuses every
+      // existing task node in-place — only missing labels (e.g. "Action Items"
+      // header when a task is dragged in from Students) get inserted.
+      await loadTasks();
+      setTimeout(() => { suppressRealtime = false; }, 500);
     } catch (err) {
       setSyncStatus('error', '✕ Sync failed');
       console.error('Position save error:', err);
+      suppressRealtime = false;
     }
-    setTimeout(() => { suppressRealtime = false; }, 1500);
   }
 
   // ── Build the canonical ordered list of items to render ───────
