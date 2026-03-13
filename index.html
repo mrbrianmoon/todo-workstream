@@ -916,34 +916,25 @@
   <button class="tab-btn" onclick="switchTab('personal')" id="tabPersonal">Personal</button>
 </div>
 
-<header>
+<header style="position:relative;">
   <div class="header-left">
     <h1 id="pageTitle">Work</h1>
     <p id="pageSubtitle">Track outstanding tasks and action items</p>
-    <div style="display:inline-flex; align-items:flex-end; gap:8px; position:relative;">
-      <div style="position:relative;">
-        <button class="date-badge" id="dateBadge" onclick="toggleCal()">
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <rect x="1" y="2" width="12" height="11" rx="2"/>
-            <path d="M1 6h12M5 1v2M9 1v2"/>
-          </svg>
-          <span id="dateBadgeText"></span>
-        </button>
-        <div class="cal-popover" id="calPopover">
-          <div class="cal-header">
-            <button class="cal-nav" onclick="changeMonth(-1)">&#8249;</button>
-            <span id="calMonthLabel"></span>
-            <button class="cal-nav" onclick="changeMonth(1)">&#8250;</button>
-          </div>
-          <div class="cal-grid" id="calGrid"></div>
+    <div style="position:relative; display:inline-block;">
+      <button class="date-badge" id="dateBadge" onclick="toggleCal()">
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <rect x="1" y="2" width="12" height="11" rx="2"/>
+          <path d="M1 6h12M5 1v2M9 1v2"/>
+        </svg>
+        <span id="dateBadgeText"></span>
+      </button>
+      <div class="cal-popover" id="calPopover">
+        <div class="cal-header">
+          <button class="cal-nav" onclick="changeMonth(-1)">&#8249;</button>
+          <span id="calMonthLabel"></span>
+          <button class="cal-nav" onclick="changeMonth(1)">&#8250;</button>
         </div>
-      </div>
-      <div id="dayNavPillWrap" style="position:absolute; left:50vw; transform:translateX(-50%); top:0; pointer-events:none;">
-        <div class="day-nav-pill" id="dayNavPill" style="pointer-events:auto;">
-          <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
-          <div class="day-nav-divider"></div>
-          <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
-        </div>
+        <div class="cal-grid" id="calGrid"></div>
       </div>
     </div>
     <br>
@@ -988,6 +979,11 @@
     </div>
   </div>
   <button class="add-btn" onclick="openModal()" title="Add item">+</button>
+  <div class="day-nav-pill" id="dayNavPill" style="position:absolute; left:50%; transform:translateX(-50%); bottom:0;">
+    <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
+    <div class="day-nav-divider"></div>
+    <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
+  </div>
 </header>
 
 <div class="progress-bar-wrap">
