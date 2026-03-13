@@ -1604,26 +1604,7 @@
   }
   setTimeout(() => { suppressRealtime = false; }, 1500);
 }
-    // After persisting, re-render from the updated cache so the section
-    // structure rebuilds correctly (Students vs Action Items grouping).
-    updates.forEach(u => {
-      const cached = cachedRows.find(r => String(r.id) === String(u.id));
-      if (cached) {
-        cached.position = u.position;
-        cached.category = u.category;
-        cached.priority = u.priority;
-      }
-    });
-    renderAllTasks(cachedRows);
-
-    setSyncStatus('synced', '✓ Synced');
-    setTimeout(() => setSyncStatus('', ''), 2000);
-  } catch (err) {
-    setSyncStatus('error', '✕ Sync failed');
-    console.error('Position save error:', err);
-  }
-  setTimeout(() => { suppressRealtime = false; }, 1500);
-}
+   
   // ── Build the canonical ordered list of items to render ───────
   // Returns an array of descriptor objects: { type: 'label'|'task', ... }
   function buildRenderPlan(rows) {
