@@ -1438,6 +1438,11 @@
     document.body.appendChild(ghost);
     positionGhost(clientX, clientY);
     dragEl.classList.add('dragging');
+    // FIX: suppress realtime updates during drag so loadTasks() fired by the
+    // realtime subscription cannot call reconcileDOM() mid-drag, which would
+    // remove the dragged task from the DOM and cause section headers (e.g.
+    // "Action Items") to appear to vanish while the user is still dragging.
+    suppressRealtime = true;
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
     document.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -1505,7 +1510,15 @@
     ghost = null;
     const moved = dragEl;
     dragEl = null;
-    await savePositions();
+    // savePositions() calls loadTasks() on completion, which re-enables
+    // suppressRealtime after a short delay. The safety timeout below guards
+    // against early exits (e.g. an exception in savePositions) that would
+    // leave suppressRealtime stuck at true indefinitely.
+    try {
+      await savePositions();
+    } finally {
+      setTimeout(() => { suppressRealtime = false; }, 600);
+    }
   }
 
   async function savePositions() {
@@ -1586,10 +1599,6 @@
           priority: u.priority
         }).eq('id', u.id)
       ));
-      // Reconcile section headers after the drag. The DB writes are done so
-      // loadTasks() now has correct ground-truth. reconcileDOM reuses every
-      // existing task node in-place — only missing labels (e.g. "Action Items"
-      // header when a task is dragged in from Students) get inserted.
       await loadTasks();
       setTimeout(() => { suppressRealtime = false; }, 500);
     } catch (err) {
@@ -1994,26 +2003,15 @@
     setTimeout(() => { suppressRealtime = false; }, 1500);
   }
 
-  // ── toggleTask: animate out, fetch fresh data, reconcile ──────
-  // Using loadTasks() instead of renderAllTasks(cachedRows) ensures
-  // the re-render is always driven by ground-truth server data.
-  // cachedRows can go stale after a drag (only position/category/priority
-  // are patched in-place; display_date and other fields are untouched),
-  // which causes buildRenderPlan to incorrectly filter tasks out of the
-  // current date view, making section headers like "Action Items" vanish.
   async function toggleTask(el) {
     const id = el.dataset.id;
     const done = !el.classList.contains('done');
 
-    // Animate the toggled task out
     el.style.transition = 'opacity 0.3s, transform 0.3s';
     el.style.opacity = '0';
     el.style.transform = 'translateX(10px)';
     el.dataset.removing = '1';
 
-    // Write to DB, then fetch fresh rows and reconcile.
-    // suppressRealtime prevents the realtime subscription from
-    // firing a redundant loadTasks() during this window.
     suppressRealtime = true;
     await db.from('tasks').update({ done }).eq('id', id);
 
@@ -2049,7 +2047,6 @@
     task.style.transform = 'translateX(10px)';
     setTimeout(() => {
       task.remove();
-      cleanEmptySections();
       updateProgress();
       checkEmpty();
     }, 300);
@@ -2066,7 +2063,6 @@
     el.style.transform = 'translateX(10px)';
     setTimeout(async () => {
       el.remove();
-      cleanEmptySections();
       updateProgress();
       checkEmpty();
       if (id) {
@@ -2220,22 +2216,6 @@
   });
 
   // ── Helpers ───────────────────────────────────────────────────
-  function cleanEmptySections() {
-    const list = document.getElementById('taskList');
-    list.querySelectorAll('.section-label').forEach(label => {
-      if (label.dataset.priorityZone) return;
-      if (label.classList.contains('completed-label')) return;
-      let next = label.nextSibling;
-      let hasTasks = false;
-      while (next) {
-        if (next.classList && next.classList.contains('section-label')) break;
-        if (next.classList && next.classList.contains('task')) { hasTasks = true; break; }
-        next = next.nextSibling;
-      }
-      if (!hasTasks) label.remove();
-    });
-  }
-
   function updateProgress() {
     const tasks = document.querySelectorAll('.task');
     const done = document.querySelectorAll('.task.done').length;
