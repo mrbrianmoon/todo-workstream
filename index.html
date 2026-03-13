@@ -1511,102 +1511,94 @@
     await savePositions();
   }
 
- async function savePositions() {
-  const list = document.getElementById('taskList');
-  const children = [...list.children];
+  async function savePositions() {
+    const list = document.getElementById('taskList');
+    const children = [...list.children];
 
-  let currentCategory = (activeTab === 'personal')
-    ? (personalSections[0] || 'General')
-    : 'Students';
-  let currentPriority = null;
-  const updates = [];
-  let pos = 0;
+    let currentCategory = (activeTab === 'personal')
+      ? (personalSections[0] || 'General')
+      : 'Students';
+    let currentPriority = null;
+    const updates = [];
+    let pos = 0;
 
-  children.forEach(child => {
-    if (child.classList.contains('section-label')) {
-      const isPriorityZone = !!child.dataset.priorityZone;
+    children.forEach(child => {
+      if (child.classList.contains('section-label')) {
+        const isPriorityZone = !!child.dataset.priorityZone;
 
-      if (isPriorityZone) {
-        // e.g. "● HIGH" under Action Items — update priority AND keep category
-        currentPriority = child.dataset.priorityZone;
-        currentCategory = child.dataset.sectionCategory || currentCategory;
-      } else if (!child.classList.contains('completed-label')) {
-        // Plain section label — reset priority, update category
-        currentCategory = child.dataset.sectionCategory || child.textContent.trim();
-        currentPriority = null;
-      }
-
-    } else if (child.classList.contains('task') && child.dataset.id) {
-
-      const supportsPriority =
-        activeTab === 'personal' ||
-        currentCategory === 'Action Items';
-
-      const taskPriority = supportsPriority ? currentPriority : null;
-
-      updates.push({
-        id:       child.dataset.id,
-        position: pos,
-        category: currentCategory,
-        priority: taskPriority
-      });
-
-      // Patch the DOM element's dataset and visual state in-place.
-      // This is what lets reconcileDOM reuse the node correctly on
-      // the NEXT render without forcing a render right now.
-      child.dataset.category = currentCategory;
-      child.dataset.priority = taskPriority || '';
-      child.classList.remove('priority-high', 'priority-med', 'priority-low');
-      if (taskPriority) {
-        child.classList.add('priority-' + taskPriority.toLowerCase());
-      }
-
-      const titleEl = child.querySelector('.task-title');
-      if (titleEl) {
-        const oldBadge = titleEl.querySelector('.priority-badge');
-        if (oldBadge) oldBadge.remove();
-        if (taskPriority) {
-          const badge = document.createElement('span');
-          badge.className = 'priority-badge ' + taskPriority.toLowerCase();
-          badge.textContent = taskPriority;
-          titleEl.appendChild(badge);
+        if (isPriorityZone) {
+          currentPriority = child.dataset.priorityZone;
+          currentCategory = child.dataset.sectionCategory || currentCategory;
+        } else if (!child.classList.contains('completed-label')) {
+          currentCategory = child.dataset.sectionCategory || child.textContent.trim();
+          currentPriority = null;
         }
-      }
 
-      // Mirror the change into cachedRows so the in-memory state stays
-      // consistent with the DOM. No re-render needed — the DOM is already right.
-      const cached = cachedRows.find(r => String(r.id) === String(child.dataset.id));
-      if (cached) {
-        cached.position = pos;
-        cached.category = currentCategory;
-        cached.priority = taskPriority;
-      }
+      } else if (child.classList.contains('task') && child.dataset.id) {
 
-      pos++;
+        const supportsPriority =
+          activeTab === 'personal' ||
+          currentCategory === 'Action Items';
+
+        const taskPriority = supportsPriority ? currentPriority : null;
+
+        updates.push({
+          id:       child.dataset.id,
+          position: pos,
+          category: currentCategory,
+          priority: taskPriority
+        });
+
+        child.dataset.category = currentCategory;
+        child.dataset.priority = taskPriority || '';
+        child.classList.remove('priority-high', 'priority-med', 'priority-low');
+        if (taskPriority) {
+          child.classList.add('priority-' + taskPriority.toLowerCase());
+        }
+
+        const titleEl = child.querySelector('.task-title');
+        if (titleEl) {
+          const oldBadge = titleEl.querySelector('.priority-badge');
+          if (oldBadge) oldBadge.remove();
+          if (taskPriority) {
+            const badge = document.createElement('span');
+            badge.className = 'priority-badge ' + taskPriority.toLowerCase();
+            badge.textContent = taskPriority;
+            titleEl.appendChild(badge);
+          }
+        }
+
+        const cached = cachedRows.find(r => String(r.id) === String(child.dataset.id));
+        if (cached) {
+          cached.position = pos;
+          cached.category = currentCategory;
+          cached.priority = taskPriority;
+        }
+
+        pos++;
+      }
+    });
+
+    setSyncStatus('syncing', '⟳ Saving order...');
+    suppressRealtime = true;
+    try {
+      await Promise.all(updates.map(u =>
+        db.from('tasks').update({
+          position: u.position,
+          category: u.category,
+          priority: u.priority
+        }).eq('id', u.id)
+      ));
+      setSyncStatus('synced', '✓ Synced');
+      setTimeout(() => setSyncStatus('', ''), 2000);
+    } catch (err) {
+      setSyncStatus('error', '✕ Sync failed');
+      console.error('Position save error:', err);
     }
-  });
-
-  setSyncStatus('syncing', '⟳ Saving order...');
-  suppressRealtime = true;
-  try {
-    await Promise.all(updates.map(u =>
-      db.from('tasks').update({
-        position: u.position,
-        category: u.category,
-        priority: u.priority
-      }).eq('id', u.id)
-    ));
-    setSyncStatus('synced', '✓ Synced');
-    setTimeout(() => setSyncStatus('', ''), 2000);
-  } catch (err) {
-    setSyncStatus('error', '✕ Sync failed');
-    console.error('Position save error:', err);
+    setTimeout(() => { suppressRealtime = false; }, 1500);
   }
-  setTimeout(() => { suppressRealtime = false; }, 1500);
-}
-   
+
   // ── Build the canonical ordered list of items to render ───────
-  // Returns an array of descriptor objects: { type: 'label'|'task', ... }
   function buildRenderPlan(rows) {
     const currentDateStr = formatShortDate(selectedDate);
     const sorted = [...rows].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
@@ -1791,26 +1783,21 @@
   function reconcileDOM(plan) {
     const list = document.getElementById('taskList');
 
-    // Build a map of existing task elements keyed by task id.
-    // Exclude nodes mid-animation so they are discarded, not reused.
     const existingTaskEls = {};
     list.querySelectorAll('.task[data-id]').forEach(el => {
       if (!el.dataset.removing) existingTaskEls[el.dataset.id] = el;
     });
 
-    // Build a map of existing label elements keyed by their render-plan key
-    // so labels (including the Completed divider) are reused, not recreated.
     const existingLabelEls = {};
     list.querySelectorAll('.section-label[data-reconcile-key]').forEach(el => {
       existingLabelEls[el.dataset.reconcileKey] = el;
     });
 
-    // Build the desired set of DOM nodes in order
     const desiredNodes = plan.map(item => {
       if (item.type === 'label') {
         const existing = existingLabelEls[item.key];
         if (existing) {
-          delete existingLabelEls[item.key]; // mark as consumed
+          delete existingLabelEls[item.key];
           return existing;
         }
         const el = document.createElement('div');
@@ -1822,11 +1809,10 @@
         }
         return el;
       } else {
-        // task node: reuse existing element if present, otherwise create fresh
         const existing = existingTaskEls[item.row.id];
         if (existing) {
           updateTaskEl(existing, item.row);
-          delete existingTaskEls[item.row.id]; // mark as consumed
+          delete existingTaskEls[item.row.id];
           return existing;
         } else {
           return createTaskEl(item.row);
@@ -1834,18 +1820,11 @@
       }
     });
 
-    // Remove stale nodes that are no longer in the plan
     Object.values(existingTaskEls).forEach(el => el.remove());
     Object.values(existingLabelEls).forEach(el => el.remove());
 
-    // Remove data-removing nodes now — they have finished animating out and
-    // are no longer referenced by desiredNodes, so pull them before the
-    // position reconciliation so they don't skew the index comparison.
     list.querySelectorAll('[data-removing]').forEach(el => el.remove());
 
-    // Reconcile child order. Compare against the live children list (which no
-    // longer contains the removed animation node) so indices are exact and
-    // nodes already in the right slot are never touched.
     desiredNodes.forEach((node, i) => {
       const current = list.children[i];
       if (current !== node) {
@@ -1853,7 +1832,6 @@
       }
     });
 
-    // Remove any extra trailing children
     while (list.children.length > desiredNodes.length) {
       list.removeChild(list.lastChild);
     }
@@ -1863,16 +1841,12 @@
   function updateTaskEl(el, row) {
     const priority = row.priority || '';
 
-    // Update classes
-    const wasDone = el.classList.contains('done');
-    const isDone  = !!row.done;
-    el.classList.toggle('done', isDone);
+    el.classList.toggle('done', !!row.done);
     el.classList.remove('priority-high', 'priority-med', 'priority-low');
     if (priority === 'HIGH') el.classList.add('priority-high');
     else if (priority === 'MED') el.classList.add('priority-med');
     else if (priority === 'LOW') el.classList.add('priority-low');
 
-    // Update dataset
     el.dataset.fwdCount    = row.fwd_count || 0;
     el.dataset.originDate  = row.origin_date || '';
     el.dataset.displayDate = row.display_date || row.origin_date || '';
@@ -1880,7 +1854,6 @@
     el.dataset.category    = row.category || '';
     el.dataset.tab         = row.tab || 'work';
 
-    // Update title (text + badges)
     const titleEl = el.querySelector('.task-title');
     if (titleEl) {
       const fwdCount = row.fwd_count || 0;
@@ -1894,7 +1867,6 @@
       titleEl.innerHTML = escapeHtml(row.name) + fwdBadge + priBadge;
     }
 
-    // Update note
     const subEl = el.querySelector('.task-sub');
     if (subEl) subEl.textContent = row.note || '';
   }
@@ -1956,39 +1928,17 @@
   }
 
   db.channel('tasks-realtime')
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'tasks' },
-      () => debouncedLoadTasks()
-    )
-    .on(
-      'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'tasks' },
-      () => debouncedLoadTasks()
-    )
-    .on(
-      'postgres_changes',
-      { event: 'DELETE', schema: 'public', table: 'tasks' },
-      () => debouncedLoadTasks()
-    )
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, () => debouncedLoadTasks())
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, () => debouncedLoadTasks())
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'tasks' }, () => debouncedLoadTasks())
     .subscribe((status) => {
-      console.log('Realtime tasks status:', status);
-      if (status === 'SUBSCRIBED') {
-        console.log('✓ Real-time task updates enabled');
-      }
+      if (status === 'SUBSCRIBED') console.log('✓ Real-time task updates enabled');
     });
 
   db.channel('sections-realtime')
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'personal_sections' },
-      () => debouncedLoadSections()
-    )
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'personal_sections' }, () => debouncedLoadSections())
     .subscribe((status) => {
-      console.log('Realtime sections status:', status);
-      if (status === 'SUBSCRIBED') {
-        console.log('✓ Real-time section updates enabled');
-      }
+      if (status === 'SUBSCRIBED') console.log('✓ Real-time section updates enabled');
     });
 
   // ── CRUD ──────────────────────────────────────────────────────
@@ -2043,31 +1993,33 @@
     setTimeout(() => { suppressRealtime = false; }, 1500);
   }
 
+  // ── toggleTask: animate out, fetch fresh data, reconcile ──────
+  // Using loadTasks() instead of renderAllTasks(cachedRows) ensures
+  // the re-render is always driven by ground-truth server data.
+  // cachedRows can go stale after a drag (only position/category/priority
+  // are patched in-place; display_date and other fields are untouched),
+  // which causes buildRenderPlan to incorrectly filter tasks out of the
+  // current date view, making section headers like "Action Items" vanish.
   async function toggleTask(el) {
     const id = el.dataset.id;
     const done = !el.classList.contains('done');
 
-    // Update cachedRows immediately so the DOM move is driven by local state,
-    // not a network round-trip. No loadTasks() call = no flicker on other tasks.
-    const cached = cachedRows.find(r => String(r.id) === String(id));
-    if (cached) cached.done = done;
-
-    // Animate the toggled task out, then re-render from the updated cache.
-    // Only this task moves; every other node is reused in-place by reconcileDOM.
+    // Animate the toggled task out
     el.style.transition = 'opacity 0.3s, transform 0.3s';
     el.style.opacity = '0';
     el.style.transform = 'translateX(10px)';
     el.dataset.removing = '1';
 
-    setTimeout(() => {
-      renderAllTasks(cachedRows);
-    }, 300);
-
-    // Write to DB in the background — no await needed here, realtime is suppressed
+    // Write to DB, then fetch fresh rows and reconcile.
+    // suppressRealtime prevents the realtime subscription from
+    // firing a redundant loadTasks() during this window.
     suppressRealtime = true;
-    db.from('tasks').update({ done }).eq('id', id).then(() => {
+    await db.from('tasks').update({ done }).eq('id', id);
+
+    setTimeout(async () => {
+      await loadTasks();
       setTimeout(() => { suppressRealtime = false; }, 1500);
-    });
+    }, 300);
   }
 
   async function forwardTask(task) {
