@@ -979,7 +979,7 @@
     </div>
   </div>
   <button class="add-btn" onclick="openModal()" title="Add item">+</button>
-  <div class="day-nav-pill" id="dayNavPill" style="position:fixed; left:50%; transform:translateX(-50%); top:0; z-index:50;">
+  <div class="day-nav-pill" id="dayNavPill" style="position:absolute; left:50%; transform:translateX(-50%); top:0; z-index:50;">
     <button class="day-nav-btn" onclick="shiftDay(-1)" title="Previous day">&#8249;</button>
     <div class="day-nav-divider"></div>
     <button class="day-nav-btn" onclick="shiftDay(1)" title="Next day">&#8250;</button>
@@ -2239,14 +2239,21 @@
               .replace(/"/g,'&quot;');
   }
 
-  // ── Position pill vertically to match the date badge row ─────
+  // ── Position pill to sit centered on page, level with date badge ─
   function positionPill() {
-    const badge = document.getElementById('dateBadge');
-    const pill  = document.getElementById('dayNavPill');
-    if (!badge || !pill) return;
-    const rect = badge.getBoundingClientRect();
-    const pillH = pill.offsetHeight;
-    pill.style.top = (rect.top + (rect.height / 2) - (pillH / 2)) + 'px';
+    const badge  = document.getElementById('dateBadge');
+    const pill   = document.getElementById('dayNavPill');
+    const hdr    = document.querySelector('header');
+    if (!badge || !pill || !hdr) return;
+    // top: offset of badge's center within the header element
+    const hdrRect   = hdr.getBoundingClientRect();
+    const badgeRect = badge.getBoundingClientRect();
+    const pillH     = pill.offsetHeight;
+    const badgeCenterInHeader = (badgeRect.top - hdrRect.top) + (badgeRect.height / 2);
+    pill.style.top  = (badgeCenterInHeader - pillH / 2) + 'px';
+    // left: 50% of header width, centering within the 640px container
+    pill.style.left      = '50%';
+    pill.style.transform = 'translateX(-50%)';
   }
 
   window.addEventListener('resize', positionPill);
