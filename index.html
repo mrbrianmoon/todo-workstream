@@ -1511,7 +1511,6 @@
     await savePositions();
   }
 
-  // ── Save Positions ────────────────────────────────────────────
   async function savePositions() {
   const list = document.getElementById('taskList');
   const children = [...list.children];
@@ -1529,20 +1528,19 @@
 
       if (isPriorityZone) {
         // e.g. "● HIGH" under Action Items — update priority AND keep category
-        currentPriority = child.dataset.priorityZone;          // 'HIGH' | 'MED' | 'LOW'
+        currentPriority = child.dataset.priorityZone;
         currentCategory = child.dataset.sectionCategory || currentCategory;
       } else if (!child.classList.contains('completed-label')) {
-        // Plain section label (Students, Action Items, General, personal section)
+        // Plain section label — reset priority, update category
         currentCategory = child.dataset.sectionCategory || child.textContent.trim();
-        currentPriority = null;   // reset priority when entering a new plain section
+        currentPriority = null;
       }
 
     } else if (child.classList.contains('task') && child.dataset.id) {
 
-      // A task only carries priority when it's in a priority-supporting section
       const supportsPriority =
-        activeTab === 'personal' ||          // personal tasks always can have priority
-        currentCategory === 'Action Items';  // work tab: only Action Items section
+        activeTab === 'personal' ||
+        currentCategory === 'Action Items';
 
       const taskPriority = supportsPriority ? currentPriority : null;
 
@@ -1553,7 +1551,9 @@
         priority: taskPriority
       });
 
-      // Keep the task's visual state in sync with its new home
+      // Patch the DOM element's dataset and visual state in-place.
+      // This is what lets reconcileDOM reuse the node correctly on
+      // the NEXT render without forcing a render right now.
       child.dataset.category = currentCategory;
       child.dataset.priority = taskPriority || '';
       child.classList.remove('priority-high', 'priority-med', 'priority-low');
@@ -1561,7 +1561,6 @@
         child.classList.add('priority-' + taskPriority.toLowerCase());
       }
 
-      // Rebuild the priority badge inside the title
       const titleEl = child.querySelector('.task-title');
       if (titleEl) {
         const oldBadge = titleEl.querySelector('.priority-badge');
@@ -1572,6 +1571,15 @@
           badge.textContent = taskPriority;
           titleEl.appendChild(badge);
         }
+      }
+
+      // Mirror the change into cachedRows so the in-memory state stays
+      // consistent with the DOM. No re-render needed — the DOM is already right.
+      const cached = cachedRows.find(r => String(r.id) === String(child.dataset.id));
+      if (cached) {
+        cached.position = pos;
+        cached.category = currentCategory;
+        cached.priority = taskPriority;
       }
 
       pos++;
@@ -1588,6 +1596,14 @@
         priority: u.priority
       }).eq('id', u.id)
     ));
+    setSyncStatus('synced', '✓ Synced');
+    setTimeout(() => setSyncStatus('', ''), 2000);
+  } catch (err) {
+    setSyncStatus('error', '✕ Sync failed');
+    console.error('Position save error:', err);
+  }
+  setTimeout(() => { suppressRealtime = false; }, 1500);
+}
 
     // After persisting, re-render from the updated cache so the section
     // structure rebuilds correctly (Students vs Action Items grouping).
