@@ -564,9 +564,197 @@
     margin-top: 3px;
     font-weight: 300;
     transition: color 0.2s;
-    white-space: pre-wrap;
     word-wrap: break-word;
   }
+
+  /* ── Rich Note Rendering (on card) ──────────────────────────── */
+  .note-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    line-height: 1.5;
+    margin: 1px 0;
+  }
+
+  .note-line.indent-1 { padding-left: 16px; }
+  .note-line.indent-2 { padding-left: 32px; }
+
+  .note-bullet::before {
+    content: '•';
+    flex-shrink: 0;
+    color: var(--muted);
+  }
+
+  .note-cb {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    background: transparent;
+    margin-top: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .note-cb.checked {
+    background: var(--accent2);
+    border-color: var(--accent2);
+  }
+
+  .note-cb.checked::after {
+    content: '';
+    display: block;
+    width: 5px;
+    height: 8px;
+    border: 1.5px solid white;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg) translate(-1px, -1px);
+  }
+
+  .note-cb-text.checked {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+
+  .task.done .note-cb {
+    border-color: #b0c4b8;
+  }
+
+  /* ── Rich Note Editor (in modal) ─────────────────────────────── */
+  .note-editor-wrap {
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    background: #cdd0d4;
+    margin-bottom: 16px;
+    transition: border-color 0.2s;
+    overflow: hidden;
+  }
+
+  .note-editor-wrap:focus-within {
+    border-color: #2e3236;
+  }
+
+  .note-toolbar {
+    display: flex;
+    gap: 2px;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.04);
+  }
+
+  .note-tool-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+
+  .note-tool-btn:hover {
+    background: var(--border);
+    color: var(--ink);
+  }
+
+  .note-tool-sep {
+    width: 1px;
+    background: var(--border);
+    margin: 3px 4px;
+  }
+
+  .note-editor-lines {
+    padding: 8px 10px;
+    min-height: 72px;
+    max-height: 280px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    outline: none;
+  }
+
+  .editor-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    min-height: 26px;
+  }
+
+  .editor-line-prefix {
+    flex-shrink: 0;
+    width: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    user-select: none;
+  }
+
+  .editor-line-prefix.bullet::before { content: '•'; }
+
+  .editor-cb-prefix {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    background: transparent;
+    margin-top: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .editor-cb-prefix.checked {
+    background: var(--accent2);
+    border-color: var(--accent2);
+  }
+
+  .editor-cb-prefix.checked::after {
+    content: '';
+    display: block;
+    width: 5px;
+    height: 8px;
+    border: 1.5px solid white;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg) translate(-1px, -1px);
+  }
+
+  .editor-line-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    color: var(--ink);
+    padding: 3px 0;
+    line-height: 1.5;
+    min-width: 0;
+  }
+
+  .editor-line-input.checked-text {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+
+  .editor-line.indent-1 { padding-left: 16px; }
+  .editor-line.indent-2 { padding-left: 32px; }
 
   /* ── Task Actions ────────────────────────────────────────────── */
   .task-actions {
@@ -1008,7 +1196,16 @@
     <label>Name / Task</label>
     <input type="text" id="taskName" />
     <label>Note (optional)</label>
-    <textarea id="taskNote" rows="3"></textarea>
+    <div class="note-editor-wrap" id="addNoteWrap">
+      <div class="note-toolbar">
+        <button class="note-tool-btn" type="button" onclick="noteToolAction('add','bullet')" title="Bullet">• Bullet</button>
+        <button class="note-tool-btn" type="button" onclick="noteToolAction('add','checkbox')" title="Checkbox">☐ Check</button>
+        <div class="note-tool-sep"></div>
+        <button class="note-tool-btn" type="button" onclick="noteToolAction('add','indent')" title="Indent">→ In</button>
+        <button class="note-tool-btn" type="button" onclick="noteToolAction('add','outdent')" title="Outdent">← Out</button>
+      </div>
+      <div class="note-editor-lines" id="addNoteEditor"></div>
+    </div>
     <div id="categoryGroup">
       <label>Category</label>
       <select id="taskCategory" onchange="togglePrioritySelect()">
@@ -1044,7 +1241,16 @@
     <label>Name / Task</label>
     <input type="text" id="editTaskName" />
     <label>Note (optional)</label>
-    <textarea id="editTaskNote" rows="3"></textarea>
+    <div class="note-editor-wrap" id="editNoteWrap">
+      <div class="note-toolbar">
+        <button class="note-tool-btn" type="button" onclick="noteToolAction('edit','bullet')" title="Bullet">• Bullet</button>
+        <button class="note-tool-btn" type="button" onclick="noteToolAction('edit','checkbox')" title="Checkbox">☐ Check</button>
+        <div class="note-tool-sep"></div>
+        <button class="note-tool-btn" type="button" onclick="noteToolAction('edit','indent')" title="Indent">→ In</button>
+        <button class="note-tool-btn" type="button" onclick="noteToolAction('edit','outdent')" title="Outdent">← Out</button>
+      </div>
+      <div class="note-editor-lines" id="editNoteEditor"></div>
+    </div>
     <div id="editCategoryGroup">
       <label>Category</label>
       <select id="editTaskCategory" onchange="toggleEditPrioritySelect()">
@@ -1764,7 +1970,7 @@
         <div class="task-title">
           ${escapeHtml(row.name)}${fwdBadge}${priBadge}
         </div>
-        <div class="task-sub">${escapeHtml(row.note || '')}</div>
+        <div class="task-sub">${renderNoteHTML(row.note || '', row.id)}</div>
         <div style="font-size:0.72rem; color:var(--muted); margin-top:4px;
                     font-weight:300; font-style:italic; opacity:0.75;">
           Added ${escapeHtml(row.origin_date || '')}
@@ -1880,7 +2086,7 @@
     }
 
     const subEl = el.querySelector('.task-sub');
-    if (subEl) subEl.textContent = row.note || '';
+    if (subEl) subEl.innerHTML = renderNoteHTML(row.note || '', row.id);
   }
 
   // ── Render All Tasks (no-flicker via reconciliation) ──────────
@@ -1960,7 +2166,7 @@
       document.getElementById('taskName').focus();
       return;
     }
-    const note = document.getElementById('taskNote').value.trim();
+    const note = readNoteFromEditor('addNoteEditor');
     const origin = formatShortDate(selectedDate);
     const position = document.querySelectorAll('.task').length;
 
@@ -2089,6 +2295,7 @@
       document.getElementById('modalTitle').textContent = 'Add Item';
       togglePrioritySelect();
     }
+    buildEditorFromNote('addNoteEditor', '');
     document.getElementById('modalOverlay').classList.add('open');
     setTimeout(() => document.getElementById('taskName').focus(), 100);
   }
@@ -2096,7 +2303,7 @@
   function closeModal() {
     document.getElementById('modalOverlay').classList.remove('open');
     document.getElementById('taskName').value = '';
-    document.getElementById('taskNote').value = '';
+    buildEditorFromNote('addNoteEditor', '');
     document.getElementById('taskCategory').value = 'Students';
     document.getElementById('taskPriority').value = '';
     document.getElementById('priorityGroup').style.display = 'none';
@@ -2112,23 +2319,20 @@
     if (e.key === 'Enter') addTask();
   });
 
-  document.getElementById('taskNote').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) addTask();
-  });
-
   // ── Edit Modal ────────────────────────────────────────────────
   function openEditModal(taskEl) {
     const id = taskEl.dataset.id;
     const name = taskEl.querySelector('.task-title').childNodes[0].textContent.trim();
-    const noteEl = taskEl.querySelector('.task-sub');
-    const note = noteEl ? noteEl.textContent : '';
     const category = taskEl.dataset.category || '';
     const priority = taskEl.dataset.priority || '';
     const tab = taskEl.dataset.tab || activeTab;
 
+    // Always read raw note from cachedRows — .task-sub contains rendered HTML
+    const cachedRow = cachedRows.find(r => String(r.id) === String(id));
+    const rawNote = cachedRow ? (cachedRow.note || '') : '';
+
     document.getElementById('editTaskId').value = id;
     document.getElementById('editTaskName').value = name;
-    document.getElementById('editTaskNote').value = note;
 
     if (tab === 'personal') {
       document.getElementById('editCategoryGroup').style.display = 'none';
@@ -2145,6 +2349,7 @@
       toggleEditPrioritySelect();
     }
 
+    buildEditorFromNote('editNoteEditor', rawNote);
     document.getElementById('editModalOverlay').classList.add('open');
     setTimeout(() => document.getElementById('editTaskName').focus(), 100);
   }
@@ -2168,7 +2373,7 @@
       document.getElementById('editTaskName').focus();
       return;
     }
-    const note = document.getElementById('editTaskNote').value.trim();
+    const note = readNoteFromEditor('editNoteEditor');
 
     let category, priority;
     if (activeTab === 'personal') {
@@ -2209,13 +2414,241 @@
     if (e.key === 'Enter') saveEdit();
   });
 
-  document.getElementById('editTaskNote').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit();
-  });
-
   document.getElementById('sectionMgrOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeSectionMgr();
   });
+
+
+  // ── Rich Note Engine ──────────────────────────────────────────
+  //
+  // Storage format (plain text in Supabase `note` column):
+  //   plain text     → regular line
+  //   - text         → bullet
+  //   [ ] text       → unchecked checkbox
+  //   [x] text       → checked checkbox
+  //   Leading 2 or 4 spaces → indent level 1 or 2
+
+  function parseNote(raw) {
+    if (!raw) return [];
+    return raw.split('\n').map(line => {
+      let indent = 0;
+      let rest = line;
+
+      // Measure indent in 2-space steps, max level 2
+      const spaceMatch = rest.match(/^( +)/);
+      if (spaceMatch) {
+        indent = Math.min(2, Math.floor(spaceMatch[1].length / 2));
+        rest = rest.slice(spaceMatch[1].length);
+      }
+
+      if (rest.startsWith('- ')) {
+        return { type: 'bullet', text: rest.slice(2), indent };
+      }
+      if (rest.startsWith('[ ] ')) {
+        return { type: 'checkbox', checked: false, text: rest.slice(4), indent };
+      }
+      if (rest.startsWith('[x] ') || rest.startsWith('[X] ')) {
+        return { type: 'checkbox', checked: true, text: rest.slice(4), indent };
+      }
+      return { type: 'plain', text: rest, indent };
+    });
+  }
+
+  function serializeNote(lines) {
+    return lines.map(l => {
+      const pad = '  '.repeat(l.indent || 0);
+      if (l.type === 'bullet')   return pad + '- ' + l.text;
+      if (l.type === 'checkbox') return pad + (l.checked ? '[x] ' : '[ ] ') + l.text;
+      return pad + l.text;
+    }).join('\n');
+  }
+
+  function renderNoteHTML(raw, taskId) {
+    const lines = parseNote(raw);
+    if (!lines.length || (lines.length === 1 && lines[0].text === '')) return '';
+
+    return lines.map((l, i) => {
+      const indentClass = l.indent ? ` indent-${l.indent}` : '';
+      const safeText = escapeHtml(l.text);
+
+      if (l.type === 'bullet') {
+        return `<div class="note-line note-bullet${indentClass}"><span>${safeText}</span></div>`;
+      }
+      if (l.type === 'checkbox') {
+        const cbClass = l.checked ? ' checked' : '';
+        const textClass = l.checked ? ' checked' : '';
+        return `<div class="note-line${indentClass}">` +
+          `<div class="note-cb${cbClass}" onclick="toggleSubtask('${taskId}',${i})"></div>` +
+          `<span class="note-cb-text${textClass}">${safeText}</span>` +
+          `</div>`;
+      }
+      // plain
+      return `<div class="note-line${indentClass}"><span>${safeText}</span></div>`;
+    }).join('');
+  }
+
+  async function toggleSubtask(taskId, lineIndex) {
+    const cached = cachedRows.find(r => String(r.id) === String(taskId));
+    if (!cached) return;
+
+    const lines = parseNote(cached.note || '');
+    if (!lines[lineIndex] || lines[lineIndex].type !== 'checkbox') return;
+
+    lines[lineIndex].checked = !lines[lineIndex].checked;
+    const newNote = serializeNote(lines);
+
+    // Optimistic update
+    cached.note = newNote;
+    const taskEl = document.querySelector(`.task[data-id="${taskId}"]`);
+    if (taskEl) {
+      const subEl = taskEl.querySelector('.task-sub');
+      if (subEl) subEl.innerHTML = renderNoteHTML(newNote, taskId);
+    }
+
+    suppressRealtime = true;
+    await db.from('tasks').update({ note: newNote }).eq('id', taskId);
+    setTimeout(() => { suppressRealtime = false; }, 1500);
+  }
+
+  // ── Note Editor DOM ───────────────────────────────────────────
+
+  function makeEditorLine(editorId, lineData) {
+    const { type, text, indent, checked } = lineData;
+    const row = document.createElement('div');
+    row.className = 'editor-line' + (indent ? ` indent-${indent}` : '');
+    row.dataset.type = type;
+    row.dataset.indent = indent || 0;
+    row.dataset.checked = checked ? '1' : '0';
+
+    const prefix = document.createElement('div');
+
+    if (type === 'bullet') {
+      prefix.className = 'editor-line-prefix bullet';
+    } else if (type === 'checkbox') {
+      prefix.className = 'editor-cb-prefix' + (checked ? ' checked' : '');
+      prefix.onclick = () => {
+        const isChecked = prefix.classList.toggle('checked');
+        row.dataset.checked = isChecked ? '1' : '0';
+        inp.classList.toggle('checked-text', isChecked);
+      };
+    } else {
+      prefix.className = 'editor-line-prefix';
+    }
+
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'editor-line-input' + (type === 'checkbox' && checked ? ' checked-text' : '');
+    inp.value = text || '';
+    inp.setAttribute('autocomplete', 'off');
+    inp.addEventListener('keydown', e => handleEditorKey(e, editorId));
+
+    row.appendChild(prefix);
+    row.appendChild(inp);
+    return row;
+  }
+
+  function buildEditorFromNote(editorId, raw) {
+    const container = document.getElementById(editorId);
+    container.innerHTML = '';
+    const lines = parseNote(raw);
+    const toRender = (!lines.length || (lines.length === 1 && lines[0].text === '' && lines[0].type === 'plain'))
+      ? [{ type: 'plain', text: '', indent: 0 }]
+      : lines;
+    toRender.forEach(l => container.appendChild(makeEditorLine(editorId, l)));
+  }
+
+  function readNoteFromEditor(editorId) {
+    const container = document.getElementById(editorId);
+    const lines = [];
+    container.querySelectorAll('.editor-line').forEach(row => {
+      lines.push({
+        type:    row.dataset.type || 'plain',
+        indent:  parseInt(row.dataset.indent) || 0,
+        checked: row.dataset.checked === '1',
+        text:    row.querySelector('.editor-line-input')?.value || ''
+      });
+    });
+    // Trim trailing blank plain lines
+    while (lines.length > 1 && lines[lines.length - 1].type === 'plain' && lines[lines.length - 1].text === '') {
+      lines.pop();
+    }
+    if (lines.length === 1 && lines[0].text === '' && lines[0].type === 'plain') return '';
+    return serializeNote(lines);
+  }
+
+  function handleEditorKey(e, editorId) {
+    const container = document.getElementById(editorId);
+    const input = e.target;
+    const row = input.closest('.editor-line');
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const currentType   = row.dataset.type;
+      const currentIndent = parseInt(row.dataset.indent) || 0;
+      const isEmpty = input.value === '';
+      const newType = (isEmpty && currentType !== 'plain') ? 'plain' : currentType;
+      const newLine = makeEditorLine(editorId, { type: newType, text: '', indent: currentIndent, checked: false });
+      row.after(newLine);
+      newLine.querySelector('.editor-line-input').focus();
+      return;
+    }
+
+    if (e.key === 'Backspace' && input.value === '') {
+      const rows = [...container.querySelectorAll('.editor-line')];
+      if (rows.length <= 1) return;
+      e.preventDefault();
+      const idx = rows.indexOf(row);
+      const prev = rows[idx - 1];
+      row.remove();
+      if (prev) {
+        const prevInput = prev.querySelector('.editor-line-input');
+        prevInput.focus();
+        prevInput.setSelectionRange(prevInput.value.length, prevInput.value.length);
+      }
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const indent = parseInt(row.dataset.indent) || 0;
+      const newIndent = e.shiftKey ? Math.max(0, indent - 1) : Math.min(2, indent + 1);
+      row.dataset.indent = newIndent;
+      row.className = 'editor-line' + (newIndent ? ` indent-${newIndent}` : '');
+      return;
+    }
+  }
+
+  function noteToolAction(editorId, action) {
+    const container = document.getElementById(editorId + 'NoteEditor');
+    let activeRow = container.querySelector('.editor-line-input:focus')?.closest('.editor-line');
+    if (!activeRow) {
+      const rows = container.querySelectorAll('.editor-line');
+      activeRow = rows[rows.length - 1];
+    }
+    if (!activeRow) return;
+
+    const indent  = parseInt(activeRow.dataset.indent) || 0;
+    const inp     = activeRow.querySelector('.editor-line-input');
+    const fullId  = editorId + 'NoteEditor';
+
+    if (action === 'bullet') {
+      const newRow = makeEditorLine(fullId, { type: 'bullet', text: inp?.value || '', indent, checked: false });
+      activeRow.replaceWith(newRow);
+      newRow.querySelector('.editor-line-input').focus();
+    } else if (action === 'checkbox') {
+      const newRow = makeEditorLine(fullId, { type: 'checkbox', text: inp?.value || '', indent, checked: false });
+      activeRow.replaceWith(newRow);
+      newRow.querySelector('.editor-line-input').focus();
+    } else if (action === 'indent') {
+      activeRow.dataset.indent = Math.min(2, indent + 1);
+      activeRow.className = 'editor-line' + (activeRow.dataset.indent > 0 ? ` indent-${activeRow.dataset.indent}` : '');
+      inp?.focus();
+    } else if (action === 'outdent') {
+      activeRow.dataset.indent = Math.max(0, indent - 1);
+      activeRow.className = 'editor-line' + (activeRow.dataset.indent > 0 ? ` indent-${activeRow.dataset.indent}` : '');
+      inp?.focus();
+    }
+  }
 
   // ── Helpers ───────────────────────────────────────────────────
   function updateProgress() {
