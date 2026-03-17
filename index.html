@@ -1211,6 +1211,7 @@
       <select id="taskCategory" onchange="togglePrioritySelect()">
         <option value="Students">Students</option>
         <option value="Action Items">Action Items</option>
+        <option value="Ongoing">Ongoing</option>
       </select>
     </div>
     <div id="personalSectionGroup" style="display:none;">
@@ -1256,6 +1257,7 @@
       <select id="editTaskCategory" onchange="toggleEditPrioritySelect()">
         <option value="Students">Students</option>
         <option value="Action Items">Action Items</option>
+        <option value="Ongoing">Ongoing</option>
       </select>
     </div>
     <div id="editPersonalSectionGroup" style="display:none;">
@@ -1825,6 +1827,8 @@
       const taskTab = row.tab || 'work';
       if (taskTab !== activeTab) return false;
       if (activeTab === 'work') {
+        // Ongoing tasks are date-independent — always visible on work tab
+        if (row.category === 'Ongoing') return true;
         const taskDate = row.display_date || row.origin_date;
         return taskDate === currentDateStr;
       }
@@ -1878,7 +1882,8 @@
 
       const students    = active.filter(r => r.category === 'Students');
       const actionItems = active.filter(r => r.category === 'Action Items');
-      const otherActive = active.filter(r => r.category !== 'Students' && r.category !== 'Action Items');
+      const ongoingItems = active.filter(r => r.category === 'Ongoing');
+      const otherActive = active.filter(r => r.category !== 'Students' && r.category !== 'Action Items' && r.category !== 'Ongoing');
 
       if (students.length > 0) {
         plan.push({ type: 'label', key: 'sec:Students', className: 'section-label', text: 'Students', dataset: { sectionCategory: 'Students' } });
@@ -1903,6 +1908,11 @@
         lowItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
 
         noPriItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
+      }
+
+      if (ongoingItems.length > 0) {
+        plan.push({ type: 'label', key: 'sec:Ongoing', className: 'section-label', text: 'Ongoing', dataset: { sectionCategory: 'Ongoing' } });
+        ongoingItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
       }
 
       if (otherActive.length > 0) {
@@ -1957,7 +1967,7 @@
     }
 
     const tabType = row.tab || 'work';
-    const hideForward = tabType === 'personal' ? 'style="display:none;"' : '';
+    const hideForward = (tabType === 'personal' || row.category === 'Ongoing') ? 'style="display:none;"' : '';
 
     task.innerHTML = `
       <div class="checkbox" onclick="toggleTask(this.parentElement)">
