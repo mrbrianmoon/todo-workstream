@@ -448,39 +448,6 @@
     cursor: grabbing;
   }
 
-  /* ── Priority Colors ─────────────────────────────────────────── */
-  .task.priority-high { background: var(--high-bg); border-color: var(--high-border); }
-  .task.priority-high.done { background: #d9c5c0; border-color: #c4aea6; }
-  .task.priority-med { background: var(--med-bg); border-color: var(--med-border); }
-  .task.priority-med.done { background: #d9d5c0; border-color: #c4bfa6; }
-  .task.priority-low { background: var(--low-bg); border-color: var(--low-border); }
-  .task.priority-low.done { background: #c0cbd9; border-color: #a6b4c4; }
-
-  .priority-badge {
-    display: inline-block;
-    font-size: 0.6rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    padding: 1px 6px;
-    border-radius: 4px;
-    margin-left: 8px;
-    vertical-align: middle;
-  }
-
-  .priority-badge.high { background: var(--high-label); color: #fff; }
-  .priority-badge.med { background: var(--med-label); color: #fff; }
-  .priority-badge.low { background: var(--low-label); color: #fff; }
-
-  /* ── Priority Section Labels ─────────────────────────────────── */
-  .section-label.priority-section {
-    display: none !important;
-  }
-
-  .section-label.priority-high-label { display: none !important; background: var(--high-bg); color: var(--high-label); border: 1px solid var(--high-border); }
-  .section-label.priority-med-label { display: none !important; background: var(--med-bg); color: var(--med-label); border: 1px solid var(--med-border); }
-  .section-label.priority-low-label { display: none !important; background: var(--low-bg); color: var(--low-label); border: 1px solid var(--low-border); }
-
   /* ── Forwarded Badge ─────────────────────────────────────────── */
   .forwarded-badge {
     display: inline-block;
@@ -1208,7 +1175,7 @@
     </div>
     <div id="categoryGroup">
       <label>Category</label>
-      <select id="taskCategory" onchange="togglePrioritySelect()">
+      <select id="taskCategory">
         <option value="Students">Students</option>
         <option value="Action Items">Action Items</option>
         <option value="Ongoing">Ongoing</option>
@@ -1217,15 +1184,6 @@
     <div id="personalSectionGroup" style="display:none;">
       <label>Section</label>
       <select id="taskPersonalSection"></select>
-    </div>
-    <div id="priorityGroup" style="display:none;">
-      <label>Priority</label>
-      <select id="taskPriority">
-        <option value="">None</option>
-        <option value="HIGH">🔴 High</option>
-        <option value="MED">🟡 Medium</option>
-        <option value="LOW">🔵 Low</option>
-      </select>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
@@ -1254,7 +1212,7 @@
     </div>
     <div id="editCategoryGroup">
       <label>Category</label>
-      <select id="editTaskCategory" onchange="toggleEditPrioritySelect()">
+      <select id="editTaskCategory">
         <option value="Students">Students</option>
         <option value="Action Items">Action Items</option>
         <option value="Ongoing">Ongoing</option>
@@ -1263,15 +1221,6 @@
     <div id="editPersonalSectionGroup" style="display:none;">
       <label>Section</label>
       <select id="editTaskPersonalSection"></select>
-    </div>
-    <div id="editPriorityGroup" style="display:none;">
-      <label>Priority</label>
-      <select id="editTaskPriority">
-        <option value="">None</option>
-        <option value="HIGH">🔴 High</option>
-        <option value="MED">🟡 Medium</option>
-        <option value="LOW">🔵 Low</option>
-      </select>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
@@ -1332,12 +1281,6 @@
     const el = document.getElementById('syncStatus');
     el.className = 'sync-status ' + state;
     el.textContent = msg;
-  }
-
-  function togglePrioritySelect() {
-    const cat = document.getElementById('taskCategory').value;
-    document.getElementById('priorityGroup').style.display =
-      cat === 'Action Items' ? 'block' : 'none';
   }
 
   // ── Personal Sections (synced via Supabase) ────────────────────
@@ -1648,10 +1591,6 @@
     document.body.appendChild(ghost);
     positionGhost(clientX, clientY);
     dragEl.classList.add('dragging');
-    // FIX: suppress realtime updates during drag so loadTasks() fired by the
-    // realtime subscription cannot call reconcileDOM() mid-drag, which would
-    // remove the dragged task from the DOM and cause section headers (e.g.
-    // "Action Items") to appear to vanish while the user is still dragging.
     suppressRealtime = true;
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
@@ -1720,10 +1659,6 @@
     ghost = null;
     const moved = dragEl;
     dragEl = null;
-    // savePositions() calls loadTasks() on completion, which re-enables
-    // suppressRealtime after a short delay. The safety timeout below guards
-    // against early exits (e.g. an exception in savePositions) that would
-    // leave suppressRealtime stuck at true indefinitely.
     try {
       await savePositions();
     } finally {
@@ -1738,61 +1673,27 @@
     let currentCategory = (activeTab === 'personal')
       ? (personalSections[0] || 'General')
       : 'Students';
-    let currentPriority = null;
     const updates = [];
     let pos = 0;
 
     children.forEach(child => {
       if (child.classList.contains('section-label')) {
-        const isPriorityZone = !!child.dataset.priorityZone;
-
-        if (isPriorityZone) {
-          currentPriority = child.dataset.priorityZone;
-          currentCategory = child.dataset.sectionCategory || currentCategory;
-        } else if (!child.classList.contains('completed-label')) {
+        if (!child.classList.contains('completed-label')) {
           currentCategory = child.dataset.sectionCategory || child.textContent.trim();
-          currentPriority = null;
         }
-
       } else if (child.classList.contains('task') && child.dataset.id) {
-
-        const supportsPriority =
-          activeTab === 'personal' ||
-          currentCategory === 'Action Items';
-
-        const taskPriority = supportsPriority ? currentPriority : null;
-
         updates.push({
           id:       child.dataset.id,
           position: pos,
-          category: currentCategory,
-          priority: taskPriority
+          category: currentCategory
         });
 
         child.dataset.category = currentCategory;
-        child.dataset.priority = taskPriority || '';
-        child.classList.remove('priority-high', 'priority-med', 'priority-low');
-        if (taskPriority) {
-          child.classList.add('priority-' + taskPriority.toLowerCase());
-        }
-
-        const titleEl = child.querySelector('.task-title');
-        if (titleEl) {
-          const oldBadge = titleEl.querySelector('.priority-badge');
-          if (oldBadge) oldBadge.remove();
-          if (taskPriority) {
-            const badge = document.createElement('span');
-            badge.className = 'priority-badge ' + taskPriority.toLowerCase();
-            badge.textContent = taskPriority;
-            titleEl.appendChild(badge);
-          }
-        }
 
         const cached = cachedRows.find(r => String(r.id) === String(child.dataset.id));
         if (cached) {
           cached.position = pos;
           cached.category = currentCategory;
-          cached.priority = taskPriority;
         }
 
         pos++;
@@ -1805,8 +1706,7 @@
       await Promise.all(updates.map(u =>
         db.from('tasks').update({
           position: u.position,
-          category: u.category,
-          priority: u.priority
+          category: u.category
         }).eq('id', u.id)
       ));
       await loadTasks();
@@ -1843,26 +1743,8 @@
 
       personalSections.forEach(sectionName => {
         const sectionTasks = active.filter(r => r.category === sectionName);
-
         plan.push({ type: 'label', key: 'sec:' + sectionName, className: 'section-label', text: sectionName, dataset: { sectionCategory: sectionName } });
-
-        const highItems = sectionTasks.filter(r => r.priority === 'HIGH');
-        const medItems  = sectionTasks.filter(r => r.priority === 'MED');
-        const lowItems  = sectionTasks.filter(r => r.priority === 'LOW');
-        const noPriItems = sectionTasks.filter(r => !r.priority);
-
-        if (highItems.length > 0 || medItems.length > 0 || lowItems.length > 0) {
-          plan.push({ type: 'label', key: 'pri:HIGH:' + sectionName, className: 'section-label priority-section priority-high-label', text: '● HIGH', dataset: { priorityZone: 'HIGH', sectionCategory: sectionName } });
-          highItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
-
-          plan.push({ type: 'label', key: 'pri:MED:' + sectionName, className: 'section-label priority-section priority-med-label', text: '● MED', dataset: { priorityZone: 'MED', sectionCategory: sectionName } });
-          medItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
-
-          plan.push({ type: 'label', key: 'pri:LOW:' + sectionName, className: 'section-label priority-section priority-low-label', text: '● LOW', dataset: { priorityZone: 'LOW', sectionCategory: sectionName } });
-          lowItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
-        }
-
-        noPriItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
+        sectionTasks.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
       });
 
       const knownSections = new Set(personalSections);
@@ -1880,10 +1762,14 @@
       const active = visible.filter(row => !row.done);
       const completed = visible.filter(row => row.done);
 
-      const students    = active.filter(r => r.category === 'Students');
-      const actionItems = active.filter(r => r.category === 'Action Items');
+      const students     = active.filter(r => r.category === 'Students');
+      const actionItems  = active.filter(r => r.category === 'Action Items');
       const ongoingItems = active.filter(r => r.category === 'Ongoing');
-      const otherActive = active.filter(r => r.category !== 'Students' && r.category !== 'Action Items' && r.category !== 'Ongoing');
+      const otherActive  = active.filter(r =>
+        r.category !== 'Students' &&
+        r.category !== 'Action Items' &&
+        r.category !== 'Ongoing'
+      );
 
       if (students.length > 0) {
         plan.push({ type: 'label', key: 'sec:Students', className: 'section-label', text: 'Students', dataset: { sectionCategory: 'Students' } });
@@ -1892,22 +1778,7 @@
 
       if (actionItems.length > 0) {
         plan.push({ type: 'label', key: 'sec:Action Items', className: 'section-label', text: 'Action Items', dataset: { sectionCategory: 'Action Items' } });
-
-        const highItems  = actionItems.filter(r => r.priority === 'HIGH');
-        const medItems   = actionItems.filter(r => r.priority === 'MED');
-        const lowItems   = actionItems.filter(r => r.priority === 'LOW');
-        const noPriItems = actionItems.filter(r => !r.priority);
-
-        plan.push({ type: 'label', key: 'pri:HIGH:Action Items', className: 'section-label priority-section priority-high-label', text: '● HIGH', dataset: { priorityZone: 'HIGH', sectionCategory: 'Action Items' } });
-        highItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
-
-        plan.push({ type: 'label', key: 'pri:MED:Action Items', className: 'section-label priority-section priority-med-label', text: '● MED', dataset: { priorityZone: 'MED', sectionCategory: 'Action Items' } });
-        medItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
-
-        plan.push({ type: 'label', key: 'pri:LOW:Action Items', className: 'section-label priority-section priority-low-label', text: '● LOW', dataset: { priorityZone: 'LOW', sectionCategory: 'Action Items' } });
-        lowItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
-
-        noPriItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
+        actionItems.forEach(r => plan.push({ type: 'task', key: 'task:' + r.id, row: r }));
       }
 
       if (ongoingItems.length > 0) {
@@ -1940,18 +1811,11 @@
   // ── Render Task from DB Row ───────────────────────────────────
   function createTaskEl(row) {
     const task = document.createElement('div');
-    const priority = row.priority || '';
-    let priorityClass = '';
-    if (priority === 'HIGH') priorityClass = ' priority-high';
-    else if (priority === 'MED') priorityClass = ' priority-med';
-    else if (priority === 'LOW') priorityClass = ' priority-low';
-
-    task.className = 'task' + (row.done ? ' done' : '') + priorityClass;
+    task.className = 'task' + (row.done ? ' done' : '');
     task.dataset.id = row.id;
     task.dataset.fwdCount = row.fwd_count || 0;
     task.dataset.originDate = row.origin_date || '';
     task.dataset.displayDate = row.display_date || row.origin_date || '';
-    task.dataset.priority = priority;
     task.dataset.category = row.category || '';
     task.dataset.tab = row.tab || 'work';
 
@@ -1959,12 +1823,6 @@
     const fwdBadge = fwdCount > 0
       ? `<span class="forwarded-badge">↪ Forwarded x${fwdCount}</span>`
       : '';
-
-    let priBadge = '';
-    if (priority) {
-      const priClass = priority.toLowerCase();
-      priBadge = `<span class="priority-badge ${priClass}">${priority}</span>`;
-    }
 
     const tabType = row.tab || 'work';
     const hideForward = (tabType === 'personal' || row.category === 'Ongoing') ? 'style="display:none;"' : '';
@@ -1978,7 +1836,7 @@
       </div>
       <div class="task-body">
         <div class="task-title">
-          ${escapeHtml(row.name)}${fwdBadge}${priBadge}
+          ${escapeHtml(row.name)}${fwdBadge}
         </div>
         <div class="task-sub">${renderNoteHTML(row.note || '', row.id)}</div>
         <div style="font-size:0.72rem; color:var(--muted); margin-top:4px;
@@ -2067,18 +1925,12 @@
 
   // ── Update an existing task element in-place ──────────────────
   function updateTaskEl(el, row) {
-    const priority = row.priority || '';
-
     el.classList.toggle('done', !!row.done);
     el.classList.remove('priority-high', 'priority-med', 'priority-low');
-    if (priority === 'HIGH') el.classList.add('priority-high');
-    else if (priority === 'MED') el.classList.add('priority-med');
-    else if (priority === 'LOW') el.classList.add('priority-low');
 
     el.dataset.fwdCount    = row.fwd_count || 0;
     el.dataset.originDate  = row.origin_date || '';
     el.dataset.displayDate = row.display_date || row.origin_date || '';
-    el.dataset.priority    = priority;
     el.dataset.category    = row.category || '';
     el.dataset.tab         = row.tab || 'work';
 
@@ -2088,11 +1940,7 @@
       const fwdBadge = fwdCount > 0
         ? `<span class="forwarded-badge">↪ Forwarded x${fwdCount}</span>`
         : '';
-      let priBadge = '';
-      if (priority) {
-        priBadge = `<span class="priority-badge ${priority.toLowerCase()}">${priority}</span>`;
-      }
-      titleEl.innerHTML = escapeHtml(row.name) + fwdBadge + priBadge;
+      titleEl.innerHTML = escapeHtml(row.name) + fwdBadge;
     }
 
     const subEl = el.querySelector('.task-sub');
@@ -2180,16 +2028,12 @@
     const origin = formatShortDate(selectedDate);
     const position = document.querySelectorAll('.task').length;
 
-    let category, priority, tab;
+    let category, tab;
     if (activeTab === 'personal') {
       category = document.getElementById('taskPersonalSection').value;
-      priority = document.getElementById('taskPriority').value || null;
       tab = 'personal';
     } else {
       category = document.getElementById('taskCategory').value;
-      priority = category === 'Action Items'
-        ? (document.getElementById('taskPriority').value || null)
-        : null;
       tab = 'work';
     }
 
@@ -2199,7 +2043,7 @@
       name,
       note,
       category,
-      priority,
+      priority: null,
       tab,
       origin_date: origin,
       display_date: origin,
@@ -2296,14 +2140,12 @@
     if (activeTab === 'personal') {
       document.getElementById('categoryGroup').style.display = 'none';
       document.getElementById('personalSectionGroup').style.display = 'block';
-      document.getElementById('priorityGroup').style.display = 'block';
       document.getElementById('modalTitle').textContent = 'Add Personal Item';
       populateSectionDropdown('taskPersonalSection');
     } else {
       document.getElementById('categoryGroup').style.display = 'block';
       document.getElementById('personalSectionGroup').style.display = 'none';
       document.getElementById('modalTitle').textContent = 'Add Item';
-      togglePrioritySelect();
     }
     buildEditorFromNote('addNoteEditor', '');
     document.getElementById('modalOverlay').classList.add('open');
@@ -2315,8 +2157,6 @@
     document.getElementById('taskName').value = '';
     buildEditorFromNote('addNoteEditor', '');
     document.getElementById('taskCategory').value = 'Students';
-    document.getElementById('taskPriority').value = '';
-    document.getElementById('priorityGroup').style.display = 'none';
     document.getElementById('categoryGroup').style.display = 'block';
     document.getElementById('personalSectionGroup').style.display = 'none';
   }
@@ -2334,7 +2174,6 @@
     const id = taskEl.dataset.id;
     const name = taskEl.querySelector('.task-title').childNodes[0].textContent.trim();
     const category = taskEl.dataset.category || '';
-    const priority = taskEl.dataset.priority || '';
     const tab = taskEl.dataset.tab || activeTab;
 
     // Always read raw note from cachedRows — .task-sub contains rendered HTML
@@ -2347,16 +2186,12 @@
     if (tab === 'personal') {
       document.getElementById('editCategoryGroup').style.display = 'none';
       document.getElementById('editPersonalSectionGroup').style.display = 'block';
-      document.getElementById('editPriorityGroup').style.display = 'block';
       populateSectionDropdown('editTaskPersonalSection');
       document.getElementById('editTaskPersonalSection').value = category;
-      document.getElementById('editTaskPriority').value = priority;
     } else {
       document.getElementById('editCategoryGroup').style.display = 'block';
       document.getElementById('editPersonalSectionGroup').style.display = 'none';
       document.getElementById('editTaskCategory').value = category;
-      document.getElementById('editTaskPriority').value = priority;
-      toggleEditPrioritySelect();
     }
 
     buildEditorFromNote('editNoteEditor', rawNote);
@@ -2370,12 +2205,6 @@
     document.getElementById('editPersonalSectionGroup').style.display = 'none';
   }
 
-  function toggleEditPrioritySelect() {
-    const cat = document.getElementById('editTaskCategory').value;
-    document.getElementById('editPriorityGroup').style.display =
-      cat === 'Action Items' ? 'block' : 'none';
-  }
-
   async function saveEdit() {
     const id = document.getElementById('editTaskId').value;
     const name = document.getElementById('editTaskName').value.trim();
@@ -2385,21 +2214,17 @@
     }
     const note = readNoteFromEditor('editNoteEditor');
 
-    let category, priority;
+    let category;
     if (activeTab === 'personal') {
       category = document.getElementById('editTaskPersonalSection').value;
-      priority = document.getElementById('editTaskPriority').value || null;
     } else {
       category = document.getElementById('editTaskCategory').value;
-      priority = category === 'Action Items'
-        ? (document.getElementById('editTaskPriority').value || null)
-        : null;
     }
 
     setSyncStatus('syncing', '⟳ Saving...');
     suppressRealtime = true;
     const { error } = await db.from('tasks')
-      .update({ name, note, category, priority })
+      .update({ name, note, category, priority: null })
       .eq('id', id);
 
     if (error) {
@@ -2430,21 +2255,12 @@
 
 
   // ── Rich Note Engine ──────────────────────────────────────────
-  //
-  // Storage format (plain text in Supabase `note` column):
-  //   plain text     → regular line
-  //   - text         → bullet
-  //   [ ] text       → unchecked checkbox
-  //   [x] text       → checked checkbox
-  //   Leading 2 or 4 spaces → indent level 1 or 2
-
   function parseNote(raw) {
     if (!raw) return [];
     return raw.split('\n').map(line => {
       let indent = 0;
       let rest = line;
 
-      // Measure indent in 2-space steps, max level 2
       const spaceMatch = rest.match(/^( +)/);
       if (spaceMatch) {
         indent = Math.min(2, Math.floor(spaceMatch[1].length / 2));
@@ -2492,7 +2308,6 @@
           `<span class="note-cb-text${textClass}">${safeText}</span>` +
           `</div>`;
       }
-      // plain
       return `<div class="note-line${indentClass}"><span>${safeText}</span></div>`;
     }).join('');
   }
@@ -2507,7 +2322,6 @@
     lines[lineIndex].checked = !lines[lineIndex].checked;
     const newNote = serializeNote(lines);
 
-    // Optimistic update
     cached.note = newNote;
     const taskEl = document.querySelector(`.task[data-id="${taskId}"]`);
     if (taskEl) {
@@ -2578,7 +2392,6 @@
         text:    row.querySelector('.editor-line-input')?.value || ''
       });
     });
-    // Trim trailing blank plain lines
     while (lines.length > 1 && lines[lines.length - 1].type === 'plain' && lines[lines.length - 1].text === '') {
       lines.pop();
     }
