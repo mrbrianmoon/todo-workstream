@@ -1038,6 +1038,127 @@
     display: none !important;
   }
 
+  /* ── Sign-out Button ─────────────────────────────────────────── */
+  .signout-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    padding: 4px 10px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+
+  .signout-btn:hover {
+    background: rgba(224,90,43,0.08);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* ── Login Screen ────────────────────────────────────────────── */
+  .login-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 998;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .login-overlay.open {
+    display: flex;
+  }
+
+  .login-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 32px 30px;
+    width: 90%;
+    max-width: 360px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    animation: slideUp 0.3s ease;
+  }
+
+  .login-card h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.9rem;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  .login-card p {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 300;
+    margin-bottom: 28px;
+  }
+
+  .login-card label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .login-card input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    color: var(--ink);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 14px;
+  }
+
+  .login-card input:focus {
+    border-color: #2e3236;
+  }
+
+  .login-submit {
+    width: 100%;
+    padding: 11px;
+    border: none;
+    border-radius: 9px;
+    background: #111111;
+    color: white;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 4px;
+  }
+
+  .login-submit:hover { background: #333333; }
+  .login-submit:disabled { background: #888; cursor: not-allowed; }
+
+  .login-error {
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin-top: 10px;
+    min-height: 18px;
+    text-align: center;
+  }
+
   /* ── Animations ──────────────────────────────────────────────── */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(10px); }
@@ -1063,6 +1184,20 @@
 
 <div class="loading-overlay" id="loadingOverlay">
   <div class="spinner"></div>
+</div>
+
+<!-- ── Login Screen ─────────────────────────────────────────── -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-card">
+    <h1>To Do</h1>
+    <p>Sign in to access your workspace</p>
+    <label>Email</label>
+    <input type="email" id="loginEmail" autocomplete="email" />
+    <label>Password</label>
+    <input type="password" id="loginPassword" autocomplete="current-password" />
+    <button class="login-submit" id="loginSubmit" onclick="handleLogin()">Sign In</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
 </div>
 
 <!-- ── Tab Bar ──────────────────────────────────────────────── -->
@@ -1102,6 +1237,9 @@
     <br>
     <button class="section-mgr-btn" id="sectionMgrBtn" onclick="openSectionMgr()" style="display:none;">
       ✎ Manage Sections
+    </button>
+    <button class="signout-btn" id="signoutBtn" onclick="handleSignOut()" style="display:none;">
+      ↩ Sign out
     </button>
   </div>
   <div class="clock-widget">
@@ -1251,6 +1389,80 @@
   const SUPABASE_KEY = 'sb_publishable_-00lJ2yGPHTgbIXa0LvO6A_Iv_c9KEN';
   const { createClient } = supabase;
   const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // ── Session timeout: 12 hours in milliseconds ─────────────────
+  const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
+
+  // ── Auth helpers ──────────────────────────────────────────────
+  function isSessionExpired(session) {
+    if (!session) return true;
+    // Supabase session has expires_at (unix seconds); also enforce our 12h wall
+    const now = Math.floor(Date.now() / 1000);
+    // expires_at is set by Supabase; we also store our own login timestamp
+    const loginTimestamp = parseInt(localStorage.getItem('tdw_login_at') || '0', 10);
+    const elapsed = Date.now() - loginTimestamp;
+    return elapsed >= SESSION_TIMEOUT_MS;
+  }
+
+  function showLoginScreen() {
+    document.getElementById('loginOverlay').classList.add('open');
+    document.getElementById('signoutBtn').style.display = 'none';
+    setTimeout(() => document.getElementById('loginEmail').focus(), 100);
+  }
+
+  function hideLoginScreen() {
+    document.getElementById('loginOverlay').classList.remove('open');
+    document.getElementById('signoutBtn').style.display = 'inline-flex';
+  }
+
+  async function handleLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const btn = document.getElementById('loginSubmit');
+    const errEl = document.getElementById('loginError');
+
+    errEl.textContent = '';
+    if (!email || !password) {
+      errEl.textContent = 'Please enter your email and password.';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+
+    if (error || !data.session) {
+      errEl.textContent = error?.message || 'Sign in failed. Please try again.';
+      return;
+    }
+
+    // Record our own login timestamp for 12h timeout enforcement
+    localStorage.setItem('tdw_login_at', String(Date.now()));
+    hideLoginScreen();
+    await init();
+  }
+
+  async function handleSignOut() {
+    await db.auth.signOut();
+    localStorage.removeItem('tdw_login_at');
+    // Clear task list so private data isn't visible after sign-out
+    cachedRows = [];
+    document.getElementById('taskList').innerHTML = '';
+    document.getElementById('emptyState').style.display = 'none';
+    showLoginScreen();
+  }
+
+  // Allow Enter key on login fields
+  document.getElementById('loginEmail').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('loginPassword').focus();
+  });
+  document.getElementById('loginPassword').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleLogin();
+  });
 
   // ── Active Tab ────────────────────────────────────────────────
   let activeTab = 'work';
@@ -2504,7 +2716,38 @@
     await loadTasks();
   }
 
-  init();
+  // ── Startup: check auth before anything else ──────────────────
+  (async function startup() {
+    const { data: { session } } = await db.auth.getSession();
+
+    if (session && !isSessionExpired(session)) {
+      // Valid session — go straight in
+      hideLoginScreen();
+      await init();
+    } else {
+      // No session or expired — sign out cleanly and show login
+      if (session) {
+        await db.auth.signOut();
+        localStorage.removeItem('tdw_login_at');
+      }
+      hideLoader();
+      showLoginScreen();
+    }
+  })();
+
+  // ── Periodic 12h timeout check (runs every minute) ────────────
+  setInterval(async () => {
+    const { data: { session } } = await db.auth.getSession();
+    if (session && isSessionExpired(session)) {
+      await db.auth.signOut();
+      localStorage.removeItem('tdw_login_at');
+      cachedRows = [];
+      document.getElementById('taskList').innerHTML = '';
+      document.getElementById('emptyState').style.display = 'none';
+      showLoginScreen();
+      showToast('Session expired — please sign in again');
+    }
+  }, 60 * 1000);
 </script>
 <script>
   (function() {
