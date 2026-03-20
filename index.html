@@ -1387,8 +1387,15 @@
   // ── Supabase ──────────────────────────────────────────────────
   const SUPABASE_URL = 'https://arndpirxpnaoelmbidtz.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_-00lJ2yGPHTgbIXa0LvO6A_Iv_c9KEN';
-  const { createClient } = supabase;
-  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+  
+  let db;
+  if (typeof supabase === 'undefined') {
+    console.error('Supabase library not loaded!');
+  } else {
+    const { createClient } = supabase;
+    db = createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log('✓ Supabase initialized');
+  }
 
   // ── Session timeout: 12 hours in milliseconds ─────────────────
   const SESSION_TIMEOUT_MS = 12 * 60 * 60 * 1000;
@@ -2258,6 +2265,14 @@
 
     setSyncStatus('syncing', '⟳ Saving...');
     suppressRealtime = true;
+    
+    if (!db) {
+      setSyncStatus('error', '✕ Database not initialized');
+      console.error('db is undefined - Supabase may not have loaded');
+      suppressRealtime = false;
+      return;
+    }
+    
     const { data: authData } = await db.auth.getUser();
     if (!authData?.user) {
       setSyncStatus('error', '✕ Not authenticated');
