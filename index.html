@@ -1567,7 +1567,9 @@
     }
 
     const newPos = personalSections.length;
+    const currentUser = (await supabase.auth.getUser()).user;
     const { error } = await db.from('personal_sections').insert([{
+      user_id: currentUser.id,
       name: name,
       position: newPos
     }]);
@@ -2251,7 +2253,9 @@
 
     setSyncStatus('syncing', '⟳ Saving...');
     suppressRealtime = true;
+    const currentUser = (await supabase.auth.getUser()).user;
     const { error } = await db.from('tasks').insert([{
+      user_id: currentUser.id,
       name,
       note,
       category,
