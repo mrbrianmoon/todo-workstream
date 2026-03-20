@@ -2042,6 +2042,7 @@
     task.dataset.fwdCount = row.fwd_count || 0;
     task.dataset.originDate = row.origin_date || '';
     task.dataset.displayDate = row.display_date || row.origin_date || '';
+    task.dataset.completedDate = row.completed_date || '';
     task.dataset.category = row.category || '';
     task.dataset.tab = row.tab || 'work';
 
@@ -2067,7 +2068,7 @@
         <div class="task-sub">${renderNoteHTML(row.note || '', row.id)}</div>
         <div style="font-size:0.72rem; color:var(--muted); margin-top:4px;
                     font-weight:300; font-style:italic; opacity:0.75;">
-          Added ${escapeHtml(row.origin_date || '')}
+          Added ${escapeHtml(row.origin_date || '')}${row.completed_date ? ' · Completed ' + escapeHtml(row.completed_date) : ''}
         </div>
       </div>
       <div class="task-actions">
@@ -2157,6 +2158,7 @@
     el.dataset.fwdCount    = row.fwd_count || 0;
     el.dataset.originDate  = row.origin_date || '';
     el.dataset.displayDate = row.display_date || row.origin_date || '';
+    el.dataset.completedDate = row.completed_date || '';
     el.dataset.category    = row.category || '';
     el.dataset.tab         = row.tab || 'work';
 
@@ -2171,6 +2173,12 @@
 
     const subEl = el.querySelector('.task-sub');
     if (subEl) subEl.innerHTML = renderNoteHTML(row.note || '', row.id);
+
+    const dateEl = el.querySelector('div[style*="font-size:0.72rem"]');
+    if (dateEl) {
+      dateEl.innerHTML = 'Added ' + escapeHtml(row.origin_date || '') + 
+        (row.completed_date ? ' · Completed ' + escapeHtml(row.completed_date) : '');
+    }
   }
 
   // ── Render All Tasks (no-flicker via reconciliation) ──────────
@@ -2311,6 +2319,13 @@
   async function toggleTask(el) {
     const id = el.dataset.id;
     const done = !el.classList.contains('done');
+    const updateData = { done };
+    
+    if (done) {
+      updateData.completed_date = formatShortDate(new Date());
+    } else {
+      updateData.completed_date = null;
+    }
 
     el.style.transition = 'opacity 0.3s, transform 0.3s';
     el.style.opacity = '0';
@@ -2318,7 +2333,7 @@
     el.dataset.removing = '1';
 
     suppressRealtime = true;
-    await db.from('tasks').update({ done }).eq('id', id);
+    await db.from('tasks').update(updateData).eq('id', id);
 
     setTimeout(async () => {
       await loadTasks();
