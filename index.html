@@ -1567,9 +1567,14 @@
     }
 
     const newPos = personalSections.length;
-    const currentUser = (await supabase.auth.getUser()).user;
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData?.user) {
+      showToast('Not authenticated');
+      console.error('User not authenticated');
+      return;
+    }
     const { error } = await db.from('personal_sections').insert([{
-      user_id: currentUser.id,
+      user_id: authData.user.id,
       name: name,
       position: newPos
     }]);
@@ -2253,9 +2258,15 @@
 
     setSyncStatus('syncing', '⟳ Saving...');
     suppressRealtime = true;
-    const currentUser = (await supabase.auth.getUser()).user;
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData?.user) {
+      setSyncStatus('error', '✕ Not authenticated');
+      console.error('User not authenticated');
+      suppressRealtime = false;
+      return;
+    }
     const { error } = await db.from('tasks').insert([{
-      user_id: currentUser.id,
+      user_id: authData.user.id,
       name,
       note,
       category,
@@ -2271,6 +2282,7 @@
     if (error) {
       setSyncStatus('error', '✕ Save failed: ' + error.message);
       console.error('Insert error:', error);
+      suppressRealtime = false;
       return;
     }
 
