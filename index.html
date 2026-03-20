@@ -1567,7 +1567,7 @@
     }
 
     const newPos = personalSections.length;
-    const { data: authData } = await supabase.auth.getUser();
+    const { data: authData } = await db.auth.getUser();
     if (!authData?.user) {
       showToast('Not authenticated');
       console.error('User not authenticated');
@@ -2258,7 +2258,7 @@
 
     setSyncStatus('syncing', '⟳ Saving...');
     suppressRealtime = true;
-    const { data: authData } = await supabase.auth.getUser();
+    const { data: authData } = await db.auth.getUser();
     if (!authData?.user) {
       setSyncStatus('error', '✕ Not authenticated');
       console.error('User not authenticated');
